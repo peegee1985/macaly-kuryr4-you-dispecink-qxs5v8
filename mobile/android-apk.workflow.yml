@@ -7,6 +7,11 @@ on:
       - "mobile/**"
       - "convex/**"
       - ".github/workflows/android-apk.yml"
+  pull_request:
+    paths:
+      - "mobile/**"
+      - "convex/**"
+      - ".github/workflows/android-apk.yml"
 
 permissions:
   contents: read
