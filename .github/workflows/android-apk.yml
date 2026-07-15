@@ -25,7 +25,7 @@ jobs:
         working-directory: mobile
     env:
       CI: "1"
-      EXPO_PUBLIC_CONVEX_URL: https://happy-otter-123.convex.cloud
+      EXPO_PUBLIC_CONVEX_URL: https://amicable-dogfish-440.eu-west-1.convex.cloud
       EXPO_NO_TELEMETRY: "1"
 
     steps:
