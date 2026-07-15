@@ -1,17 +1,22 @@
 import { ConvexAuthProvider, useAuthActions } from "@convex-dev/auth/react";
 import { ConvexReactClient, useConvexAuth, useQuery } from "convex/react";
-import { useState } from "react";
+import * as Notifications from "expo-notifications";
+import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
 import { BottomTabs, LoadingView } from "./src/components/ui";
 import { useGpsTracking } from "./src/hooks/useGpsTracking";
+import { useDriverStatusNotification } from "./src/hooks/useDriverStatusNotification";
 import { api } from "./src/lib/api";
 import { secureAuthStorage } from "./src/lib/storage";
+import { getStatusNotificationsEnabled } from "./src/lib/statusNotifications";
 import { AccountStateScreen, LoginScreen, MissingConfigurationScreen } from "./src/screens/AuthScreens";
 import { AvailabilityScreen } from "./src/screens/AvailabilityScreen";
+import { ChatScreen } from "./src/screens/ChatScreen";
 import { DashboardScreen } from "./src/screens/DashboardScreen";
+import { NotificationsModal } from "./src/screens/NotificationsModal";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { RideDetailModal } from "./src/screens/RideDetailModal";
 import { RidesScreen } from "./src/screens/RidesScreen";
@@ -62,7 +67,7 @@ function AuthenticatedApp() {
   const logout = () => void signOut();
   if (user.role !== "driver") return <AccountStateScreen state="wrong-role" onSignOut={logout} />;
   if (user.status === "pending") return <AccountStateScreen state="pending" onSignOut={logout} />;
-  if (user.status === "blocked") return <AccountStateScreen state="blocked" onSignOut={logout} />;
+  if (user.status === "blocked" || user.status === "inactive") return <AccountStateScreen state="blocked" onSignOut={logout} />;
 
   return <DriverApp user={user} onSignOut={logout} />;
 }
@@ -71,7 +76,37 @@ function DriverApp({ user, onSignOut }: { user: DriverUser; onSignOut: () => voi
   const [tab, setTab] = useState<MainTab>("home");
   const [selectedRide, setSelectedRide] = useState<Ride | null>(null);
   const [selectedVisit, setSelectedVisit] = useState<ServiceVisit | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [statusNotificationsEnabled, setStatusNotificationsEnabledState] = useState(false);
   const gps = useGpsTracking();
+  const rides = useQuery(api.rides.getDriverRides, {}) as Ride[] | undefined;
+  const unreadChat = useQuery(api.chat.getUnreadChatCount, {}) as number | undefined;
+  const activeRide = useMemo(() => {
+    const priorities: Ride["status"][] = ["transit", "pickup", "assigned", "approved", "pending"];
+    return (rides ?? [])
+      .filter((ride) => !["delivered", "cancelled", "failed"].includes(ride.status))
+      .sort((a, b) => priorities.indexOf(a.status) - priorities.indexOf(b.status))[0] ?? null;
+  }, [rides]);
+
+  useDriverStatusNotification({
+    user,
+    tracking: gps.tracking,
+    activeRide,
+    enabled: statusNotificationsEnabled,
+  });
+
+  useEffect(() => {
+    void getStatusNotificationsEnabled().then(setStatusNotificationsEnabledState);
+  }, []);
+
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const screen = response.notification.request.content.data?.screen;
+      if (screen === "rides") setTab("rides");
+      if (screen === "chat") setTab("chat");
+    });
+    return () => subscription.remove();
+  }, []);
 
   const logout = async () => {
     if (gps.tracking) await gps.stop();
@@ -90,17 +125,27 @@ function DriverApp({ user, onSignOut }: { user: DriverUser; onSignOut: () => voi
             onGpsToggle={() => void (gps.tracking ? gps.stop() : gps.start())}
             onOpenRide={setSelectedRide}
             onOpenRides={() => setTab("rides")}
+            onOpenNotifications={() => setNotificationsOpen(true)}
           />
         ) : null}
         {tab === "rides" ? <RidesScreen onOpenRide={setSelectedRide} /> : null}
+        {tab === "chat" ? <ChatScreen user={user} /> : null}
         {tab === "vending" ? <VendingScreen onOpenVisit={setSelectedVisit} /> : null}
         {tab === "availability" ? <AvailabilityScreen /> : null}
-        {tab === "profile" ? <ProfileScreen user={user} onSignOut={() => void logout()} /> : null}
+        {tab === "profile" ? (
+          <ProfileScreen
+            user={user}
+            onSignOut={() => void logout()}
+            statusNotificationsEnabled={statusNotificationsEnabled}
+            onStatusNotificationsChange={setStatusNotificationsEnabledState}
+          />
+        ) : null}
       </View>
 
-      <BottomTabs active={tab} onChange={setTab} />
+      <BottomTabs active={tab} onChange={setTab} badges={{ chat: unreadChat ?? 0 }} />
       <RideDetailModal ride={selectedRide} onClose={() => setSelectedRide(null)} />
       <VisitDetailModal visit={selectedVisit} onClose={() => setSelectedVisit(null)} />
+      <NotificationsModal visible={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
     </View>
   );
 }

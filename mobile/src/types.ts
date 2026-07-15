@@ -39,9 +39,47 @@ export type DriverUser = {
   name?: string;
   phone?: string;
   role: string;
-  status: "pending" | "active" | "blocked";
+  status: "pending" | "active" | "inactive" | "blocked";
   vehicleType?: string;
   vehiclePlate?: string;
+  driverPushAssigned?: boolean;
+  driverPushAvailable?: boolean;
+  driverEmailAssigned?: boolean;
+};
+
+export type ChatConversation = {
+  partnerId: string;
+  partnerName: string;
+  partnerRole: string;
+  lastMessage: string;
+  lastAt: number;
+  unread: number;
+};
+
+export type ChatUser = {
+  _id: string;
+  name: string;
+  role: string;
+  email?: string;
+};
+
+export type ChatMessage = {
+  _id: string;
+  _creationTime: number;
+  senderId: string;
+  receiverId: string;
+  text: string;
+  read: boolean;
+};
+
+export type AppNotification = {
+  _id: string;
+  _creationTime: number;
+  title: string;
+  message: string;
+  read: boolean;
+  type: string;
+  rideId?: string;
 };
 
 export type ServiceLocation = {
@@ -85,4 +123,4 @@ export type Availability = {
   notes?: string;
 };
 
-export type MainTab = "home" | "rides" | "vending" | "availability" | "profile";
+export type MainTab = "home" | "rides" | "chat" | "vending" | "availability" | "profile";

@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQuery } from "convex/react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { RideCard } from "../components/RideCard";
 import { AppButton, Card, EmptyState, PageHeader, Screen } from "../components/ui";
@@ -16,6 +16,7 @@ export function DashboardScreen({
   onGpsToggle,
   onOpenRide,
   onOpenRides,
+  onOpenNotifications,
 }: {
   user: DriverUser;
   tracking: boolean;
@@ -24,6 +25,7 @@ export function DashboardScreen({
   onGpsToggle: () => void;
   onOpenRide: (ride: Ride) => void;
   onOpenRides: () => void;
+  onOpenNotifications: () => void;
 }) {
   const rides = useQuery(api.rides.getDriverRides, {}) as Ride[] | undefined;
   const visits = useQuery(api.vending.getDriverTodayVisits, {}) as ServiceVisit[] | undefined;
@@ -39,10 +41,10 @@ export function DashboardScreen({
         title={`Ahoj, ${(user.name || "řidiči").split(" ")[0]}`}
         subtitle={user.vehiclePlate ? `${user.vehicleType || "Vozidlo"} · ${user.vehiclePlate}` : "Připraven vyrazit?"}
         action={
-          <View style={styles.notification}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Otevřít oznámení" onPress={onOpenNotifications} style={styles.notification}>
             <Ionicons name="notifications-outline" color={colors.text} size={22} />
             {unread ? <View style={styles.notificationDot}><Text style={styles.notificationCount}>{Math.min(unread, 9)}</Text></View> : null}
-          </View>
+          </Pressable>
         }
       />
 

@@ -15,6 +15,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppButton, Card, LoadingView } from "../components/ui";
 import { api } from "../lib/api";
@@ -23,6 +24,7 @@ import { colors, radius, spacing } from "../theme";
 import type { ServiceVisit } from "../types";
 
 export function VisitDetailModal({ visit, onClose }: { visit: ServiceVisit | null; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
   const detail = useQuery(api.vending.getVisit, visit ? { visitId: visit._id } : "skip") as ServiceVisit | null | undefined;
   const acceptVisit = useMutation(api.vending.driverAcceptVisit);
   const startNavigation = useMutation(api.vending.driverStartNavigation);
@@ -150,7 +152,7 @@ export function VisitDetailModal({ visit, onClose }: { visit: ServiceVisit | nul
   return (
     <Modal visible animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.root}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, spacing.md) }]}>
           <Pressable onPress={onClose} style={styles.back}>
             <Ionicons name="arrow-back" size={22} color={colors.text} />
           </Pressable>
@@ -168,7 +170,7 @@ export function VisitDetailModal({ visit, onClose }: { visit: ServiceVisit | nul
             <Text style={styles.errorText}>Zkontrolujte přiřazení návštěvy řidiči.</Text>
           </View>
         ) : (
-          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={[styles.content, { paddingBottom: primaryLabel ? 108 + insets.bottom : spacing.xxl + insets.bottom }]} showsVerticalScrollIndicator={false}>
             <Card style={styles.locationCard}>
               <View style={styles.locationIcon}>
                 <Ionicons name="location" size={22} color={colors.primary} />
@@ -235,7 +237,7 @@ export function VisitDetailModal({ visit, onClose }: { visit: ServiceVisit | nul
         )}
 
         {detail && primaryLabel ? (
-          <View style={styles.bottom}>
+          <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
             <AppButton title={primaryLabel} icon="arrow-forward-circle-outline" loading={busy} onPress={() => void primary()} />
           </View>
         ) : null}
@@ -246,13 +248,13 @@ export function VisitDetailModal({ visit, onClose }: { visit: ServiceVisit | nul
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
-  header: { paddingTop: 48, minHeight: 106, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  header: { minHeight: 76, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   back: { width: 42, height: 42, borderRadius: 13, backgroundColor: colors.surfaceRaised, alignItems: "center", justifyContent: "center" },
   headerCopy: { flex: 1 },
   headerTitle: { color: colors.text, fontWeight: "900", fontSize: 16 },
   headerSub: { color: colors.textMuted, fontSize: 11, marginTop: 3 },
   headerStatus: { color: colors.primary, fontWeight: "800", fontSize: 11 },
-  content: { padding: spacing.lg, paddingBottom: 124, gap: spacing.md },
+  content: { padding: spacing.lg, gap: spacing.md },
   locationCard: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   locationIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: "rgba(245,158,11,0.12)", alignItems: "center", justifyContent: "center" },
   flex: { flex: 1 },
@@ -276,7 +278,7 @@ const styles = StyleSheet.create({
   addPhoto: { width: "31.5%", aspectRatio: 1, borderRadius: radius.md, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.border, alignItems: "center", justifyContent: "center", gap: 4 },
   addPhotoText: { color: colors.primary, fontSize: 10, fontWeight: "800" },
   notes: { minHeight: 100, textAlignVertical: "top", color: colors.text, backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, fontSize: 13, lineHeight: 19 },
-  bottom: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border, padding: spacing.lg, paddingBottom: 24 },
+  bottom: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   errorState: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xl },
   errorTitle: { color: colors.text, fontSize: 18, fontWeight: "800", marginTop: spacing.md },
   errorText: { color: colors.textMuted, textAlign: "center", marginTop: spacing.sm },

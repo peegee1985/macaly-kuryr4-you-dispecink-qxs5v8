@@ -3,7 +3,6 @@ import type { ComponentProps, PropsWithChildren, ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +11,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors, radius, spacing } from "../theme";
 import type { MainTab, RideStatus } from "../types";
@@ -23,26 +23,33 @@ export function Screen({
   children,
   scroll = true,
   contentStyle,
-}: PropsWithChildren<{ scroll?: boolean; contentStyle?: ViewStyle }>) {
+  withBottomTabs = true,
+}: PropsWithChildren<{ scroll?: boolean; contentStyle?: ViewStyle; withBottomTabs?: boolean }>) {
+  const insets = useSafeAreaInsets();
+  const insetStyle = {
+    paddingTop: Math.max(insets.top, spacing.md),
+    paddingBottom: withBottomTabs ? spacing.xl : Math.max(insets.bottom, spacing.lg),
+  };
+
   if (!scroll) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={[styles.content, contentStyle]}>{children}</View>
-      </SafeAreaView>
+      <View style={styles.safe}>
+        <View style={[styles.content, styles.staticContent, insetStyle, contentStyle]}>{children}</View>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.safe}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, contentStyle]}
+        contentContainerStyle={[styles.content, insetStyle, contentStyle]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {children}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -161,23 +168,48 @@ export function LoadingView({ label = "Načítám…" }: { label?: string }) {
 const tabs: Array<{ key: MainTab; label: string; icon: IconName; activeIcon: IconName }> = [
   { key: "home", label: "Přehled", icon: "grid-outline", activeIcon: "grid" },
   { key: "rides", label: "Zakázky", icon: "cube-outline", activeIcon: "cube" },
+  { key: "chat", label: "Chat", icon: "chatbubbles-outline", activeIcon: "chatbubbles" },
   { key: "vending", label: "Vending", icon: "storefront-outline", activeIcon: "storefront" },
   { key: "availability", label: "Směny", icon: "calendar-outline", activeIcon: "calendar" },
   { key: "profile", label: "Profil", icon: "person-outline", activeIcon: "person" },
 ];
 
-export function BottomTabs({ active, onChange }: { active: MainTab; onChange: (tab: MainTab) => void }) {
+export function BottomTabs({
+  active,
+  onChange,
+  badges,
+}: {
+  active: MainTab;
+  onChange: (tab: MainTab) => void;
+  badges?: Partial<Record<MainTab, number>>;
+}) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.tabBar}>
+    <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
       {tabs.map((tab) => {
         const selected = tab.key === active;
+        const badge = badges?.[tab.key] ?? 0;
         return (
-          <Pressable key={tab.key} onPress={() => onChange(tab.key)} style={styles.tabItem}>
-            <Ionicons
-              name={selected ? tab.activeIcon : tab.icon}
-              size={22}
-              color={selected ? colors.primary : colors.textMuted}
-            />
+          <Pressable
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            accessibilityLabel={tab.label}
+            key={tab.key}
+            onPress={() => onChange(tab.key)}
+            style={styles.tabItem}
+          >
+            <View>
+              <Ionicons
+                name={selected ? tab.activeIcon : tab.icon}
+                size={21}
+                color={selected ? colors.primary : colors.textMuted}
+              />
+              {badge > 0 ? (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>{badge > 9 ? "9+" : badge}</Text>
+                </View>
+              ) : null}
+            </View>
             <Text style={[styles.tabLabel, selected && styles.tabLabelActive]}>{tab.label}</Text>
           </Pressable>
         );
@@ -189,7 +221,8 @@ export function BottomTabs({ active, onChange }: { active: MainTab; onChange: (t
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   scroll: { flex: 1 },
-  content: { flexGrow: 1, padding: spacing.lg, paddingBottom: 108 },
+  content: { flexGrow: 1, paddingHorizontal: spacing.lg },
+  staticContent: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -247,19 +280,16 @@ const styles = StyleSheet.create({
   loading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background, gap: 14 },
   loadingText: { color: colors.textMuted, fontWeight: "600" },
   tabBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 84,
+    minHeight: 68,
     backgroundColor: colors.surface,
     borderTopColor: colors.border,
     borderTopWidth: 1,
     flexDirection: "row",
-    paddingTop: 10,
-    paddingBottom: 18,
+    paddingTop: 9,
   },
   tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 3 },
-  tabLabel: { color: colors.textMuted, fontSize: 10, fontWeight: "700" },
+  tabLabel: { color: colors.textMuted, fontSize: 9, fontWeight: "700" },
   tabLabelActive: { color: colors.primary },
+  tabBadge: { position: "absolute", top: -7, right: -10, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: colors.surface },
+  tabBadgeText: { color: colors.white, fontSize: 8, fontWeight: "900" },
 });

@@ -72,7 +72,7 @@ export function LoginScreen() {
       style={styles.keyboard}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <Screen contentStyle={styles.screen}>
+      <Screen withBottomTabs={false} contentStyle={styles.screen}>
         <View style={styles.brand}>
           <View style={styles.logoWrap}>
             <Image source={require("../../assets/icon.png")} style={styles.logo} />
@@ -172,7 +172,7 @@ export function AccountStateScreen({ state, onSignOut }: { state: "pending" | "b
   }[state];
 
   return (
-    <Screen contentStyle={styles.stateScreen}>
+    <Screen withBottomTabs={false} contentStyle={styles.stateScreen}>
       <View style={styles.stateIcon}>
         <Ionicons name={copy.icon} size={34} color={colors.primary} />
       </View>
@@ -185,7 +185,7 @@ export function AccountStateScreen({ state, onSignOut }: { state: "pending" | "b
 
 export function MissingConfigurationScreen() {
   return (
-    <Screen contentStyle={styles.stateScreen}>
+    <Screen withBottomTabs={false} contentStyle={styles.stateScreen}>
       <View style={styles.stateIcon}>
         <Ionicons name="settings-outline" size={34} color={colors.primary} />
       </View>

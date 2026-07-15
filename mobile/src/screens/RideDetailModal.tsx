@@ -14,6 +14,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppButton, Card, StatusPill } from "../components/ui";
 import { api } from "../lib/api";
@@ -24,6 +25,7 @@ import type { Ride, RideStatus } from "../types";
 type PickedPhoto = { uri: string; mimeType?: string | null };
 
 export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
   const liveRide = useQuery(api.rides.getRide, ride ? { rideId: ride._id } : "skip") as Ride | null | undefined;
   const current = liveRide ?? ride;
   const updateStatus = useMutation(api.rides.updateRideStatus);
@@ -144,7 +146,7 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
   return (
     <Modal visible={Boolean(ride)} animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.root}>
-        <View style={styles.modalHeader}>
+        <View style={[styles.modalHeader, { paddingTop: Math.max(insets.top, spacing.md) }]}>
           <Pressable onPress={podMode ? () => setPodMode(false) : onClose} style={styles.backButton}>
             <Ionicons name="arrow-back" size={22} color={colors.text} />
           </Pressable>
@@ -155,7 +157,7 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
           {!podMode ? <StatusPill status={current.status} /> : null}
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={[styles.content, { paddingBottom: primaryAction && !podMode ? 104 + insets.bottom : spacing.xxl + insets.bottom }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {podMode ? (
             <View style={styles.podForm}>
               <Card>
@@ -244,7 +246,7 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
         </ScrollView>
 
         {!podMode && primaryAction ? (
-          <View style={styles.bottomAction}>
+          <View style={[styles.bottomAction, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
             <AppButton title={primaryAction} icon="arrow-forward-circle-outline" loading={busy} onPress={() => void performPrimaryAction()} />
           </View>
         ) : null}
@@ -283,12 +285,12 @@ function Info({ label, value, icon }: { label: string; value: string; icon: Reac
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
-  modalHeader: { paddingTop: 48, minHeight: 106, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  modalHeader: { minHeight: 76, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   backButton: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceRaised },
   headerCopy: { flex: 1 },
   headerTitle: { color: colors.text, fontWeight: "900", fontSize: 17 },
   headerSub: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
-  content: { padding: spacing.lg, paddingBottom: 120 },
+  content: { padding: spacing.lg },
   details: { gap: spacing.md },
   podForm: { gap: spacing.lg },
   stopHeader: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm },
@@ -307,7 +309,7 @@ const styles = StyleSheet.create({
   codTitle: { color: colors.text, fontWeight: "800", fontSize: 14 },
   codHelp: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
   codAmount: { color: colors.warning, fontWeight: "900", fontSize: 16 },
-  bottomAction: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: colors.surface, borderTopColor: colors.border, borderTopWidth: 1, padding: spacing.lg, paddingBottom: 24 },
+  bottomAction: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: colors.surface, borderTopColor: colors.border, borderTopWidth: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   fieldLabel: { color: colors.text, fontWeight: "800", fontSize: 12, marginBottom: spacing.sm },
   input: { minHeight: 52, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceRaised, color: colors.text, paddingHorizontal: spacing.md, fontSize: 15 },
   photo: { width: "100%", aspectRatio: 16 / 10, borderRadius: radius.md, marginBottom: spacing.sm, backgroundColor: colors.surfaceRaised },
