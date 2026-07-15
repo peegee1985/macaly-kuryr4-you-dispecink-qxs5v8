@@ -1,0 +1,242 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Kurýr4You Dispečink API",
+    "version": "1.0.0",
+    "description": "REST API pro čtení dat dispečinku Kurýr4You. Slouží k integraci s AI asistenty (ChatGPT, Claude) nebo interními nástroji. Přístup je autentizován AI klíčem (k4ai_...)."
+  },
+  "servers": [
+    {
+      "url": "https://amicable-dogfish-440.eu-west-1.convex.site",
+      "description": "Produkční server (Convex HTTP)"
+    }
+  ],
+  "security": [
+    { "BearerAuth": [] }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "k4ai_...",
+        "description": "AI klíč dispečera. Generujte ho v sekci 'AI přístup' v panelu dispečera."
+      }
+    },
+    "schemas": {
+      "Summary": {
+        "type": "object",
+        "description": "Přehled stavu dispečinku v reálném čase",
+        "properties": {
+          "total": { "type": "integer", "description": "Celkový počet zásilek" },
+          "byStatus": {
+            "type": "object",
+            "properties": {
+              "pending":   { "type": "integer" },
+              "approved":  { "type": "integer" },
+              "assigned":  { "type": "integer" },
+              "pickup":    { "type": "integer" },
+              "transit":   { "type": "integer" },
+              "delivered": { "type": "integer" },
+              "cancelled": { "type": "integer" },
+              "failed":    { "type": "integer" }
+            }
+          },
+          "activeDrivers": { "type": "integer", "description": "Řidiči aktivní v posledních 5 minutách" },
+          "todayDelivered": { "type": "integer", "description": "Zásilky doručené dnes" }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "description": "Zásilka / přepravní příkaz",
+        "properties": {
+          "rideNumber":         { "type": "string",  "example": "K4Y-00123" },
+          "status":             { "type": "string",  "enum": ["pending","approved","assigned","pickup","transit","delivered","cancelled","failed"] },
+          "pickupAddress":      { "type": "string" },
+          "deliveryAddress":    { "type": "string" },
+          "cargoType":          { "type": "string",  "enum": ["envelope","parcel","box","pallet","other"] },
+          "cargoDescription":   { "type": "string" },
+          "weight":             { "type": "number",  "nullable": true, "description": "Hmotnost v kg" },
+          "quantity":           { "type": "integer" },
+          "requestedPickupAt":  { "type": "integer", "description": "Unix timestamp ms" },
+          "requestedDeliveryAt":{ "type": "integer", "description": "Unix timestamp ms" },
+          "podDeliveredAt":     { "type": "integer", "nullable": true, "description": "Čas doručení (ms)" },
+          "driverId":           { "type": "string",  "nullable": true },
+          "notes":              { "type": "string",  "nullable": true },
+          "trackingUrl":        { "type": "string" },
+          "createdAt":          { "type": "integer" }
+        }
+      },
+      "Driver": {
+        "type": "object",
+        "description": "Řidič + aktuální GPS poloha",
+        "properties": {
+          "driverId":   { "type": "string" },
+          "name":       { "type": "string",  "nullable": true },
+          "email":      { "type": "string" },
+          "phone":      { "type": "string",  "nullable": true },
+          "isTracking": { "type": "boolean", "description": "Právě aktivní GPS" },
+          "lat":        { "type": "number",  "nullable": true },
+          "lng":        { "type": "number",  "nullable": true },
+          "speed":      { "type": "integer", "nullable": true, "description": "Rychlost km/h" },
+          "lastSeen":   { "type": "integer", "nullable": true, "description": "Unix timestamp ms" }
+        }
+      },
+      "CrmContact": {
+        "type": "object",
+        "description": "Kontakt v CRM",
+        "properties": {
+          "id":          { "type": "string" },
+          "type":        { "type": "string", "enum": ["individual","company"] },
+          "name":        { "type": "string" },
+          "companyName": { "type": "string",  "nullable": true },
+          "email":       { "type": "string",  "nullable": true },
+          "phone":       { "type": "string",  "nullable": true },
+          "address":     { "type": "string",  "nullable": true },
+          "city":        { "type": "string",  "nullable": true },
+          "ico":         { "type": "string",  "nullable": true },
+          "tags":        { "type": "array",   "items": { "type": "string" } },
+          "status":      { "type": "string",  "enum": ["active","inactive","lead","blocked"] },
+          "notes":       { "type": "string",  "nullable": true },
+          "createdAt":   { "type": "integer" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/dispatch/summary": {
+      "get": {
+        "operationId": "getDispatchSummary",
+        "summary": "Přehled dispečinku",
+        "description": "Vrátí souhrnné statistiky: počty zásilek podle stavu, aktivní řidiče a dnešní doručení.",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Summary" } } }
+          },
+          "401": { "description": "Neplatný AI klíč" }
+        }
+      }
+    },
+    "/api/v1/dispatch/orders": {
+      "get": {
+        "operationId": "getDispatchOrders",
+        "summary": "Seznam zásilek",
+        "description": "Vrátí zásilky s možností filtrování podle stavu, stránkování pomocí limit/offset.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filtr stavu zásilky. Výchozí: all",
+            "schema": { "type": "string", "enum": ["all","pending","approved","assigned","pickup","transit","delivered","cancelled","failed"] }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Počet záznamů (max 200, výchozí 50)",
+            "schema": { "type": "integer", "default": 50 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Přeskočit N záznamů (pro stránkování)",
+            "schema": { "type": "integer", "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "orders": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } },
+                    "count":  { "type": "integer" },
+                    "limit":  { "type": "integer" },
+                    "offset": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Neplatný AI klíč" }
+        }
+      }
+    },
+    "/api/v1/dispatch/drivers": {
+      "get": {
+        "operationId": "getDispatchDrivers",
+        "summary": "Řidiči a jejich poloha",
+        "description": "Vrátí seznam všech řidičů (driver + service_driver) s aktuální GPS polohou.",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "drivers": { "type": "array", "items": { "$ref": "#/components/schemas/Driver" } },
+                    "count":   { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Neplatný AI klíč" }
+        }
+      }
+    },
+    "/api/v1/dispatch/crm": {
+      "get": {
+        "operationId": "getDispatchCrm",
+        "summary": "CRM kontakty",
+        "description": "Vrátí kontakty z CRM s možností filtrování a stránkování.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filtr stavu kontaktu. Výchozí: all",
+            "schema": { "type": "string", "enum": ["all","active","inactive","lead","blocked"] }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Počet záznamů (max 200, výchozí 50)",
+            "schema": { "type": "integer", "default": 50 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Přeskočit N záznamů",
+            "schema": { "type": "integer", "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "contacts": { "type": "array", "items": { "$ref": "#/components/schemas/CrmContact" } },
+                    "count":    { "type": "integer" },
+                    "limit":    { "type": "integer" },
+                    "offset":   { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Neplatný AI klíč" }
+        }
+      }
+    }
+  }
+}

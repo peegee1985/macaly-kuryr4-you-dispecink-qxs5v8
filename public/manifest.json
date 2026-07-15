@@ -1,0 +1,47 @@
+{
+  "short_name": "K4Y Dispečink",
+  "name": "Kuryr4You Dispečink",
+  "description": "Kurýrní dispečink – správa zásilek, řidičů a sledování v reálném čase.",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/ridic",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0d0d0d",
+  "background_color": "#0d0d0d",
+  "lang": "cs",
+  "categories": ["logistics", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Moje zásilky",
+      "short_name": "Zásilky",
+      "url": "/ridic/zasilky",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Dispečink",
+      "short_name": "Dispečink",
+      "url": "/dispatcer",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "/": {
+    "title": "Kurýr4You – Same Day Delivery & Kurýrní služba Praha",
+    "description": "Rychlá kurýrní doprava po Praze a okolí. Rodinná firma s 20 lety zkušeností. Objednejte online bez registrace, sledování zásilky v reálném čase.",
+    "openGraph": {
+      "images": "https://www.kuryr4you.cz/og-image.jpg"
+    }
+  },
+  "/jak-to-funguje": {
+    "title": "Jak to funguje – Průvodce platformou Kurýr4You",
+    "description": "Kompletní průvodce platformou Kurýr4You. Registrace, přihlášení, správa účtu, objednání kurýra, platba kartou, sledování zásilky a fakturace – vše krok za krokem.",
+    "openGraph": {
+      "images": "https://www.kuryr4you.cz/og-image.jpg"
+    }
+  },
+  "/objednat": {
+    "title": "Objednat kurýra – Kurýr4You",
+    "description": "Objednejte kurýra bez registrace. Okamžitý výpočet ceny, platba kartou, potvrzení na e-mail. Same Day Delivery Praha.",
+    "openGraph": {
+      "images": "https://www.kuryr4you.cz/og-image.jpg"
+    }
+  }
+}

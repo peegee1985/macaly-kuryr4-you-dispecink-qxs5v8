@@ -1,0 +1,225 @@
+@import 'leaflet/dist/leaflet.css';
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: 222 20% 8%;
+  --foreground: 210 20% 92%;
+  --card: 222 18% 11%;
+  --card-foreground: 210 20% 92%;
+  --popover: 222 18% 13%;
+  --popover-foreground: 210 20% 92%;
+  --primary: 38 92% 50%;
+  --primary-foreground: 222 20% 8%;
+  --secondary: 222 15% 16%;
+  --secondary-foreground: 210 15% 75%;
+  --muted: 222 15% 14%;
+  --muted-foreground: 210 12% 55%;
+  --accent: 38 92% 50%;
+  --accent-foreground: 222 20% 8%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 222 15% 18%;
+  --input: 222 15% 16%;
+  --ring: 38 92% 50%;
+
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 98%;
+  --warning: 38 92% 50%;
+  --info: 199 89% 48%;
+
+  --radius: 0.5rem;
+
+  --chart-1: 38 92% 50%;
+  --chart-2: 142 71% 45%;
+  --chart-3: 199 89% 48%;
+  --chart-4: 0 72% 51%;
+  --chart-5: 270 70% 60%;
+
+  --sidebar-background: 222 22% 6%;
+  --sidebar-foreground: 210 15% 75%;
+  --sidebar-primary: 38 92% 50%;
+  --sidebar-primary-foreground: 222 20% 8%;
+  --sidebar-accent: 222 15% 14%;
+  --sidebar-accent-foreground: 210 20% 92%;
+  --sidebar-border: 222 15% 15%;
+  --sidebar-ring: 38 92% 50%;
+}
+
+/* ─── Light theme ─────────────────────────────────────────────── */
+html.light {
+  --background: 220 16% 96%;
+  --foreground: 222 30% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 30% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 30% 10%;
+  --primary: 38 88% 40%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 88%;
+  --secondary-foreground: 222 25% 25%;
+  --muted: 220 12% 91%;
+  --muted-foreground: 222 15% 42%;
+  --accent: 38 88% 40%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 70% 46%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 220 14% 80%;
+  --input: 0 0% 97%;
+  --ring: 38 88% 40%;
+  --success: 142 58% 34%;
+  --success-foreground: 0 0% 98%;
+  --warning: 38 88% 40%;
+  --info: 199 78% 36%;
+  /* sidebar stays dark intentionally for contrast */
+  --sidebar-background: 222 28% 14%;
+  --sidebar-foreground: 210 15% 72%;
+  --sidebar-primary: 38 88% 40%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 222 20% 20%;
+  --sidebar-accent-foreground: 210 20% 88%;
+  --sidebar-border: 222 20% 20%;
+  --sidebar-ring: 38 88% 40%;
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-info: hsl(var(--info));
+  --color-sidebar-background: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: 'Nunito Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: 'Exo 2', system-ui, sans-serif;
+  font-weight: 700;
+}
+
+/* Leaflet map dark theme override */
+.leaflet-container {
+  background: hsl(var(--background));
+  font-family: 'Nunito Sans', sans-serif;
+  border-radius: inherit;
+}
+
+/* Allow popups and tooltips to render outside the map container bounds */
+.leaflet-popup-pane,
+.leaflet-tooltip-pane {
+  overflow: visible;
+}
+
+/* Ensure popups appear above all other page elements */
+.leaflet-popup {
+  z-index: 1000;
+}
+
+.leaflet-popup-content-wrapper {
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+}
+
+.leaflet-popup-tip {
+  background: hsl(var(--card));
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Status badge base */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  line-height: 1.3;
+}
+
+/* Status badge colors — dark theme (default) */
+.status-pending   { background: hsl(38 92% 50% / 0.15); color: hsl(38 92% 65%);  border: 1px solid hsl(38 92% 50% / 0.3); }
+.status-approved  { background: hsl(199 89% 48% / 0.15); color: hsl(199 89% 65%); border: 1px solid hsl(199 89% 48% / 0.3); }
+.status-assigned  { background: hsl(270 70% 60% / 0.15); color: hsl(270 70% 75%); border: 1px solid hsl(270 70% 60% / 0.3); }
+.status-pickup    { background: hsl(38 92% 50% / 0.15);  color: hsl(38 92% 65%);  border: 1px solid hsl(38 92% 50% / 0.3); }
+.status-transit   { background: hsl(199 89% 48% / 0.15); color: hsl(199 89% 65%); border: 1px solid hsl(199 89% 48% / 0.3); }
+.status-delivered { background: hsl(142 71% 45% / 0.15); color: hsl(142 71% 60%); border: 1px solid hsl(142 71% 45% / 0.3); }
+.status-cancelled { background: hsl(0 72% 51% / 0.15);   color: hsl(0 72% 65%);   border: 1px solid hsl(0 72% 51% / 0.3); }
+
+/* Slide-up animation for mobile sheet */
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0.8; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.animate-slide-up {
+  animation: slide-up 0.22s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* Status badge colors — light theme overrides */
+html.light .status-pending   { background: hsl(38 92% 50% / 0.12);  color: hsl(32 85% 30%);  border: 1px solid hsl(38 92% 50% / 0.4); }
+html.light .status-approved  { background: hsl(199 89% 48% / 0.12); color: hsl(199 80% 28%); border: 1px solid hsl(199 89% 48% / 0.4); }
+html.light .status-assigned  { background: hsl(270 70% 60% / 0.12); color: hsl(270 60% 38%); border: 1px solid hsl(270 70% 60% / 0.4); }
+html.light .status-pickup    { background: hsl(25 92% 50% / 0.12);  color: hsl(25 85% 30%);  border: 1px solid hsl(25 92% 50% / 0.4); }
+html.light .status-transit   { background: hsl(199 89% 48% / 0.12); color: hsl(199 80% 28%); border: 1px solid hsl(199 89% 48% / 0.4); }
+html.light .status-delivered { background: hsl(142 71% 45% / 0.12); color: hsl(142 65% 26%); border: 1px solid hsl(142 71% 45% / 0.4); }
+html.light .status-cancelled { background: hsl(0 72% 51% / 0.12);   color: hsl(0 65% 38%);   border: 1px solid hsl(0 72% 51% / 0.4); }
