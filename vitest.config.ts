@@ -9,7 +9,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
     include: ["**/*.test.{ts,tsx}"],
-    exclude: ["node_modules", ".tanstack"],
+    exclude: ["**/node_modules/**", ".tanstack/**", "mobile/**"],
   },
   resolve: {
     alias: {

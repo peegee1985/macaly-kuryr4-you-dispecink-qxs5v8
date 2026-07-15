@@ -394,11 +394,14 @@ export const getVisit = query({
     const visit = await ctx.db.get(visitId)
     if (!visit) return null
     const ok = await canAccessClient(ctx, visit.clientId, userId, user.role)
-    // service_driver can only see their own visits
-    if (user.role === "service_driver" && visit.driverId !== userId) {
+    // Mobile and web drivers may only open visits assigned directly to them.
+    // Client membership is intentionally not required for an assigned driver.
+    const isDriver = user.role === "service_driver" || user.role === "driver"
+    const isAssignedDriver = isDriver && visit.driverId === userId
+    if (isDriver && !isAssignedDriver) {
       throw new Error("Přístup odepřen")
     }
-    if (!ok && user.role !== "service_driver") throw new Error("Přístup odepřen")
+    if (!ok && !isAssignedDriver) throw new Error("Přístup odepřen")
     const location = await ctx.db.get(visit.locationId)
     const driver = visit.driverId ? await ctx.db.get(visit.driverId) : null
     const timeline = await ctx.db

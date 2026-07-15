@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ZakaznikRouteImport } from './routes/zakaznik'
+import { Route as VendingPortalRouteImport } from './routes/vending-portal'
+import { Route as VendingRouteImport } from './routes/vending'
 import { Route as RidicRouteImport } from './routes/ridic'
 import { Route as RegistraceRouteImport } from './routes/registrace'
 import { Route as PrihlaseniRouteImport } from './routes/prihlaseni'
@@ -23,18 +25,30 @@ import { Route as DispatcerRouteImport } from './routes/dispatcer'
 import { Route as AdminSetupRouteImport } from './routes/admin-setup'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ZakaznikIndexRouteImport } from './routes/zakaznik.index'
+import { Route as VendingIndexRouteImport } from './routes/vending.index'
+import { Route as VendingPortalIndexRouteImport } from './routes/vending-portal.index'
 import { Route as RidicIndexRouteImport } from './routes/ridic.index'
 import { Route as DispatcerIndexRouteImport } from './routes/dispatcer.index'
 import { Route as ZakaznikZasilkyRouteImport } from './routes/zakaznik.zasilky'
 import { Route as ZakaznikUctenkyRouteImport } from './routes/zakaznik.uctenky'
+import { Route as ZakaznikSablonyRouteImport } from './routes/zakaznik.sablony'
 import { Route as ZakaznikProfilRouteImport } from './routes/zakaznik.profil'
 import { Route as ZakaznikNovaZasilkaRouteImport } from './routes/zakaznik.nova-zasilka'
 import { Route as ZakaznikFakturyRouteImport } from './routes/zakaznik.faktury'
+import { Route as VendingSablonyRouteImport } from './routes/vending.sablony'
+import { Route as VendingNavstevyRouteImport } from './routes/vending.navstevy'
+import { Route as VendingMapaRouteImport } from './routes/vending.mapa'
+import { Route as VendingLokaceRouteImport } from './routes/vending.lokace'
+import { Route as VendingKpiRouteImport } from './routes/vending.kpi'
+import { Route as VendingKlientiRouteImport } from './routes/vending.klienti'
+import { Route as VendingIncidentyRouteImport } from './routes/vending.incidenty'
 import { Route as SledovaniTokenRouteImport } from './routes/sledovani.$token'
 import { Route as RidicZakazkyRouteImport } from './routes/ridic.zakazky'
+import { Route as RidicVendingRouteImport } from './routes/ridic.vending'
 import { Route as RidicProfilRouteImport } from './routes/ridic.profil'
 import { Route as RidicGpsRouteImport } from './routes/ridic.gps'
 import { Route as RidicDostupnostRouteImport } from './routes/ridic.dostupnost'
+import { Route as HodnoceniTokenRouteImport } from './routes/hodnoceni.$token'
 import { Route as DispatcerZasilkyRouteImport } from './routes/dispatcer.zasilky'
 import { Route as DispatcerZamestnanciRouteImport } from './routes/dispatcer.zamestnanci'
 import { Route as DispatcerUzivateleRouteImport } from './routes/dispatcer.uzivatele'
@@ -45,6 +59,12 @@ import { Route as DispatcerMapaRouteImport } from './routes/dispatcer.mapa'
 import { Route as DispatcerKalendarRouteImport } from './routes/dispatcer.kalendar'
 import { Route as DispatcerFakturaceRouteImport } from './routes/dispatcer.fakturace'
 import { Route as DispatcerCrmRouteImport } from './routes/dispatcer.crm'
+import { Route as DispatcerArchivRouteImport } from './routes/dispatcer.archiv'
+import { Route as DispatcerAiPristupRouteImport } from './routes/dispatcer.ai-pristup'
+import { Route as RidicVendingIndexRouteImport } from './routes/ridic.vending.index'
+import { Route as VendingNavstevyVisitIdRouteImport } from './routes/vending.navstevy.$visitId'
+import { Route as VendingLokaceLocationIdRouteImport } from './routes/vending.lokace.$locationId'
+import { Route as RidicVendingVisitIdRouteImport } from './routes/ridic.vending.$visitId'
 import { Route as RidicPodRideIdRouteImport } from './routes/ridic.pod.$rideId'
 import { Route as DispatcerZamestnanciEmployeeIdRouteImport } from './routes/dispatcer.zamestnanci.$employeeId'
 import { Route as DispatcerCrmContactIdRouteImport } from './routes/dispatcer.crm.$contactId'
@@ -52,6 +72,16 @@ import { Route as DispatcerCrmContactIdRouteImport } from './routes/dispatcer.cr
 const ZakaznikRoute = ZakaznikRouteImport.update({
   id: '/zakaznik',
   path: '/zakaznik',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VendingPortalRoute = VendingPortalRouteImport.update({
+  id: '/vending-portal',
+  path: '/vending-portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VendingRoute = VendingRouteImport.update({
+  id: '/vending',
+  path: '/vending',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RidicRoute = RidicRouteImport.update({
@@ -119,6 +149,16 @@ const ZakaznikIndexRoute = ZakaznikIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ZakaznikRoute,
 } as any)
+const VendingIndexRoute = VendingIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => VendingRoute,
+} as any)
+const VendingPortalIndexRoute = VendingPortalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => VendingPortalRoute,
+} as any)
 const RidicIndexRoute = RidicIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -139,6 +179,11 @@ const ZakaznikUctenkyRoute = ZakaznikUctenkyRouteImport.update({
   path: '/uctenky',
   getParentRoute: () => ZakaznikRoute,
 } as any)
+const ZakaznikSablonyRoute = ZakaznikSablonyRouteImport.update({
+  id: '/sablony',
+  path: '/sablony',
+  getParentRoute: () => ZakaznikRoute,
+} as any)
 const ZakaznikProfilRoute = ZakaznikProfilRouteImport.update({
   id: '/profil',
   path: '/profil',
@@ -154,6 +199,41 @@ const ZakaznikFakturyRoute = ZakaznikFakturyRouteImport.update({
   path: '/faktury',
   getParentRoute: () => ZakaznikRoute,
 } as any)
+const VendingSablonyRoute = VendingSablonyRouteImport.update({
+  id: '/sablony',
+  path: '/sablony',
+  getParentRoute: () => VendingRoute,
+} as any)
+const VendingNavstevyRoute = VendingNavstevyRouteImport.update({
+  id: '/navstevy',
+  path: '/navstevy',
+  getParentRoute: () => VendingRoute,
+} as any)
+const VendingMapaRoute = VendingMapaRouteImport.update({
+  id: '/mapa',
+  path: '/mapa',
+  getParentRoute: () => VendingRoute,
+} as any)
+const VendingLokaceRoute = VendingLokaceRouteImport.update({
+  id: '/lokace',
+  path: '/lokace',
+  getParentRoute: () => VendingRoute,
+} as any)
+const VendingKpiRoute = VendingKpiRouteImport.update({
+  id: '/kpi',
+  path: '/kpi',
+  getParentRoute: () => VendingRoute,
+} as any)
+const VendingKlientiRoute = VendingKlientiRouteImport.update({
+  id: '/klienti',
+  path: '/klienti',
+  getParentRoute: () => VendingRoute,
+} as any)
+const VendingIncidentyRoute = VendingIncidentyRouteImport.update({
+  id: '/incidenty',
+  path: '/incidenty',
+  getParentRoute: () => VendingRoute,
+} as any)
 const SledovaniTokenRoute = SledovaniTokenRouteImport.update({
   id: '/sledovani/$token',
   path: '/sledovani/$token',
@@ -162,6 +242,11 @@ const SledovaniTokenRoute = SledovaniTokenRouteImport.update({
 const RidicZakazkyRoute = RidicZakazkyRouteImport.update({
   id: '/zakazky',
   path: '/zakazky',
+  getParentRoute: () => RidicRoute,
+} as any)
+const RidicVendingRoute = RidicVendingRouteImport.update({
+  id: '/vending',
+  path: '/vending',
   getParentRoute: () => RidicRoute,
 } as any)
 const RidicProfilRoute = RidicProfilRouteImport.update({
@@ -178,6 +263,11 @@ const RidicDostupnostRoute = RidicDostupnostRouteImport.update({
   id: '/dostupnost',
   path: '/dostupnost',
   getParentRoute: () => RidicRoute,
+} as any)
+const HodnoceniTokenRoute = HodnoceniTokenRouteImport.update({
+  id: '/hodnoceni/$token',
+  path: '/hodnoceni/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DispatcerZasilkyRoute = DispatcerZasilkyRouteImport.update({
   id: '/zasilky',
@@ -229,6 +319,36 @@ const DispatcerCrmRoute = DispatcerCrmRouteImport.update({
   path: '/crm',
   getParentRoute: () => DispatcerRoute,
 } as any)
+const DispatcerArchivRoute = DispatcerArchivRouteImport.update({
+  id: '/archiv',
+  path: '/archiv',
+  getParentRoute: () => DispatcerRoute,
+} as any)
+const DispatcerAiPristupRoute = DispatcerAiPristupRouteImport.update({
+  id: '/ai-pristup',
+  path: '/ai-pristup',
+  getParentRoute: () => DispatcerRoute,
+} as any)
+const RidicVendingIndexRoute = RidicVendingIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RidicVendingRoute,
+} as any)
+const VendingNavstevyVisitIdRoute = VendingNavstevyVisitIdRouteImport.update({
+  id: '/$visitId',
+  path: '/$visitId',
+  getParentRoute: () => VendingNavstevyRoute,
+} as any)
+const VendingLokaceLocationIdRoute = VendingLokaceLocationIdRouteImport.update({
+  id: '/$locationId',
+  path: '/$locationId',
+  getParentRoute: () => VendingLokaceRoute,
+} as any)
+const RidicVendingVisitIdRoute = RidicVendingVisitIdRouteImport.update({
+  id: '/$visitId',
+  path: '/$visitId',
+  getParentRoute: () => RidicVendingRoute,
+} as any)
 const RidicPodRideIdRoute = RidicPodRideIdRouteImport.update({
   id: '/pod/$rideId',
   path: '/pod/$rideId',
@@ -259,7 +379,11 @@ export interface FileRoutesByFullPath {
   '/prihlaseni': typeof PrihlaseniRoute
   '/registrace': typeof RegistraceRoute
   '/ridic': typeof RidicRouteWithChildren
+  '/vending': typeof VendingRouteWithChildren
+  '/vending-portal': typeof VendingPortalRouteWithChildren
   '/zakaznik': typeof ZakaznikRouteWithChildren
+  '/dispatcer/ai-pristup': typeof DispatcerAiPristupRoute
+  '/dispatcer/archiv': typeof DispatcerArchivRoute
   '/dispatcer/crm': typeof DispatcerCrmRouteWithChildren
   '/dispatcer/fakturace': typeof DispatcerFakturaceRoute
   '/dispatcer/kalendar': typeof DispatcerKalendarRoute
@@ -270,22 +394,38 @@ export interface FileRoutesByFullPath {
   '/dispatcer/uzivatele': typeof DispatcerUzivateleRoute
   '/dispatcer/zamestnanci': typeof DispatcerZamestnanciRouteWithChildren
   '/dispatcer/zasilky': typeof DispatcerZasilkyRoute
+  '/hodnoceni/$token': typeof HodnoceniTokenRoute
   '/ridic/dostupnost': typeof RidicDostupnostRoute
   '/ridic/gps': typeof RidicGpsRoute
   '/ridic/profil': typeof RidicProfilRoute
+  '/ridic/vending': typeof RidicVendingRouteWithChildren
   '/ridic/zakazky': typeof RidicZakazkyRoute
   '/sledovani/$token': typeof SledovaniTokenRoute
+  '/vending/incidenty': typeof VendingIncidentyRoute
+  '/vending/klienti': typeof VendingKlientiRoute
+  '/vending/kpi': typeof VendingKpiRoute
+  '/vending/lokace': typeof VendingLokaceRouteWithChildren
+  '/vending/mapa': typeof VendingMapaRoute
+  '/vending/navstevy': typeof VendingNavstevyRouteWithChildren
+  '/vending/sablony': typeof VendingSablonyRoute
   '/zakaznik/faktury': typeof ZakaznikFakturyRoute
   '/zakaznik/nova-zasilka': typeof ZakaznikNovaZasilkaRoute
   '/zakaznik/profil': typeof ZakaznikProfilRoute
+  '/zakaznik/sablony': typeof ZakaznikSablonyRoute
   '/zakaznik/uctenky': typeof ZakaznikUctenkyRoute
   '/zakaznik/zasilky': typeof ZakaznikZasilkyRoute
   '/dispatcer/': typeof DispatcerIndexRoute
   '/ridic/': typeof RidicIndexRoute
+  '/vending-portal/': typeof VendingPortalIndexRoute
+  '/vending/': typeof VendingIndexRoute
   '/zakaznik/': typeof ZakaznikIndexRoute
   '/dispatcer/crm/$contactId': typeof DispatcerCrmContactIdRoute
   '/dispatcer/zamestnanci/$employeeId': typeof DispatcerZamestnanciEmployeeIdRoute
   '/ridic/pod/$rideId': typeof RidicPodRideIdRoute
+  '/ridic/vending/$visitId': typeof RidicVendingVisitIdRoute
+  '/vending/lokace/$locationId': typeof VendingLokaceLocationIdRoute
+  '/vending/navstevy/$visitId': typeof VendingNavstevyVisitIdRoute
+  '/ridic/vending/': typeof RidicVendingIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -298,6 +438,8 @@ export interface FileRoutesByTo {
   '/platba-uspesna': typeof PlatbaUspesnaRoute
   '/prihlaseni': typeof PrihlaseniRoute
   '/registrace': typeof RegistraceRoute
+  '/dispatcer/ai-pristup': typeof DispatcerAiPristupRoute
+  '/dispatcer/archiv': typeof DispatcerArchivRoute
   '/dispatcer/crm': typeof DispatcerCrmRouteWithChildren
   '/dispatcer/fakturace': typeof DispatcerFakturaceRoute
   '/dispatcer/kalendar': typeof DispatcerKalendarRoute
@@ -308,22 +450,37 @@ export interface FileRoutesByTo {
   '/dispatcer/uzivatele': typeof DispatcerUzivateleRoute
   '/dispatcer/zamestnanci': typeof DispatcerZamestnanciRouteWithChildren
   '/dispatcer/zasilky': typeof DispatcerZasilkyRoute
+  '/hodnoceni/$token': typeof HodnoceniTokenRoute
   '/ridic/dostupnost': typeof RidicDostupnostRoute
   '/ridic/gps': typeof RidicGpsRoute
   '/ridic/profil': typeof RidicProfilRoute
   '/ridic/zakazky': typeof RidicZakazkyRoute
   '/sledovani/$token': typeof SledovaniTokenRoute
+  '/vending/incidenty': typeof VendingIncidentyRoute
+  '/vending/klienti': typeof VendingKlientiRoute
+  '/vending/kpi': typeof VendingKpiRoute
+  '/vending/lokace': typeof VendingLokaceRouteWithChildren
+  '/vending/mapa': typeof VendingMapaRoute
+  '/vending/navstevy': typeof VendingNavstevyRouteWithChildren
+  '/vending/sablony': typeof VendingSablonyRoute
   '/zakaznik/faktury': typeof ZakaznikFakturyRoute
   '/zakaznik/nova-zasilka': typeof ZakaznikNovaZasilkaRoute
   '/zakaznik/profil': typeof ZakaznikProfilRoute
+  '/zakaznik/sablony': typeof ZakaznikSablonyRoute
   '/zakaznik/uctenky': typeof ZakaznikUctenkyRoute
   '/zakaznik/zasilky': typeof ZakaznikZasilkyRoute
   '/dispatcer': typeof DispatcerIndexRoute
   '/ridic': typeof RidicIndexRoute
+  '/vending-portal': typeof VendingPortalIndexRoute
+  '/vending': typeof VendingIndexRoute
   '/zakaznik': typeof ZakaznikIndexRoute
   '/dispatcer/crm/$contactId': typeof DispatcerCrmContactIdRoute
   '/dispatcer/zamestnanci/$employeeId': typeof DispatcerZamestnanciEmployeeIdRoute
   '/ridic/pod/$rideId': typeof RidicPodRideIdRoute
+  '/ridic/vending/$visitId': typeof RidicVendingVisitIdRoute
+  '/vending/lokace/$locationId': typeof VendingLokaceLocationIdRoute
+  '/vending/navstevy/$visitId': typeof VendingNavstevyVisitIdRoute
+  '/ridic/vending': typeof RidicVendingIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -339,7 +496,11 @@ export interface FileRoutesById {
   '/prihlaseni': typeof PrihlaseniRoute
   '/registrace': typeof RegistraceRoute
   '/ridic': typeof RidicRouteWithChildren
+  '/vending': typeof VendingRouteWithChildren
+  '/vending-portal': typeof VendingPortalRouteWithChildren
   '/zakaznik': typeof ZakaznikRouteWithChildren
+  '/dispatcer/ai-pristup': typeof DispatcerAiPristupRoute
+  '/dispatcer/archiv': typeof DispatcerArchivRoute
   '/dispatcer/crm': typeof DispatcerCrmRouteWithChildren
   '/dispatcer/fakturace': typeof DispatcerFakturaceRoute
   '/dispatcer/kalendar': typeof DispatcerKalendarRoute
@@ -350,22 +511,38 @@ export interface FileRoutesById {
   '/dispatcer/uzivatele': typeof DispatcerUzivateleRoute
   '/dispatcer/zamestnanci': typeof DispatcerZamestnanciRouteWithChildren
   '/dispatcer/zasilky': typeof DispatcerZasilkyRoute
+  '/hodnoceni/$token': typeof HodnoceniTokenRoute
   '/ridic/dostupnost': typeof RidicDostupnostRoute
   '/ridic/gps': typeof RidicGpsRoute
   '/ridic/profil': typeof RidicProfilRoute
+  '/ridic/vending': typeof RidicVendingRouteWithChildren
   '/ridic/zakazky': typeof RidicZakazkyRoute
   '/sledovani/$token': typeof SledovaniTokenRoute
+  '/vending/incidenty': typeof VendingIncidentyRoute
+  '/vending/klienti': typeof VendingKlientiRoute
+  '/vending/kpi': typeof VendingKpiRoute
+  '/vending/lokace': typeof VendingLokaceRouteWithChildren
+  '/vending/mapa': typeof VendingMapaRoute
+  '/vending/navstevy': typeof VendingNavstevyRouteWithChildren
+  '/vending/sablony': typeof VendingSablonyRoute
   '/zakaznik/faktury': typeof ZakaznikFakturyRoute
   '/zakaznik/nova-zasilka': typeof ZakaznikNovaZasilkaRoute
   '/zakaznik/profil': typeof ZakaznikProfilRoute
+  '/zakaznik/sablony': typeof ZakaznikSablonyRoute
   '/zakaznik/uctenky': typeof ZakaznikUctenkyRoute
   '/zakaznik/zasilky': typeof ZakaznikZasilkyRoute
   '/dispatcer/': typeof DispatcerIndexRoute
   '/ridic/': typeof RidicIndexRoute
+  '/vending-portal/': typeof VendingPortalIndexRoute
+  '/vending/': typeof VendingIndexRoute
   '/zakaznik/': typeof ZakaznikIndexRoute
   '/dispatcer/crm/$contactId': typeof DispatcerCrmContactIdRoute
   '/dispatcer/zamestnanci/$employeeId': typeof DispatcerZamestnanciEmployeeIdRoute
   '/ridic/pod/$rideId': typeof RidicPodRideIdRoute
+  '/ridic/vending/$visitId': typeof RidicVendingVisitIdRoute
+  '/vending/lokace/$locationId': typeof VendingLokaceLocationIdRoute
+  '/vending/navstevy/$visitId': typeof VendingNavstevyVisitIdRoute
+  '/ridic/vending/': typeof RidicVendingIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -382,7 +559,11 @@ export interface FileRouteTypes {
     | '/prihlaseni'
     | '/registrace'
     | '/ridic'
+    | '/vending'
+    | '/vending-portal'
     | '/zakaznik'
+    | '/dispatcer/ai-pristup'
+    | '/dispatcer/archiv'
     | '/dispatcer/crm'
     | '/dispatcer/fakturace'
     | '/dispatcer/kalendar'
@@ -393,22 +574,38 @@ export interface FileRouteTypes {
     | '/dispatcer/uzivatele'
     | '/dispatcer/zamestnanci'
     | '/dispatcer/zasilky'
+    | '/hodnoceni/$token'
     | '/ridic/dostupnost'
     | '/ridic/gps'
     | '/ridic/profil'
+    | '/ridic/vending'
     | '/ridic/zakazky'
     | '/sledovani/$token'
+    | '/vending/incidenty'
+    | '/vending/klienti'
+    | '/vending/kpi'
+    | '/vending/lokace'
+    | '/vending/mapa'
+    | '/vending/navstevy'
+    | '/vending/sablony'
     | '/zakaznik/faktury'
     | '/zakaznik/nova-zasilka'
     | '/zakaznik/profil'
+    | '/zakaznik/sablony'
     | '/zakaznik/uctenky'
     | '/zakaznik/zasilky'
     | '/dispatcer/'
     | '/ridic/'
+    | '/vending-portal/'
+    | '/vending/'
     | '/zakaznik/'
     | '/dispatcer/crm/$contactId'
     | '/dispatcer/zamestnanci/$employeeId'
     | '/ridic/pod/$rideId'
+    | '/ridic/vending/$visitId'
+    | '/vending/lokace/$locationId'
+    | '/vending/navstevy/$visitId'
+    | '/ridic/vending/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -421,6 +618,8 @@ export interface FileRouteTypes {
     | '/platba-uspesna'
     | '/prihlaseni'
     | '/registrace'
+    | '/dispatcer/ai-pristup'
+    | '/dispatcer/archiv'
     | '/dispatcer/crm'
     | '/dispatcer/fakturace'
     | '/dispatcer/kalendar'
@@ -431,22 +630,37 @@ export interface FileRouteTypes {
     | '/dispatcer/uzivatele'
     | '/dispatcer/zamestnanci'
     | '/dispatcer/zasilky'
+    | '/hodnoceni/$token'
     | '/ridic/dostupnost'
     | '/ridic/gps'
     | '/ridic/profil'
     | '/ridic/zakazky'
     | '/sledovani/$token'
+    | '/vending/incidenty'
+    | '/vending/klienti'
+    | '/vending/kpi'
+    | '/vending/lokace'
+    | '/vending/mapa'
+    | '/vending/navstevy'
+    | '/vending/sablony'
     | '/zakaznik/faktury'
     | '/zakaznik/nova-zasilka'
     | '/zakaznik/profil'
+    | '/zakaznik/sablony'
     | '/zakaznik/uctenky'
     | '/zakaznik/zasilky'
     | '/dispatcer'
     | '/ridic'
+    | '/vending-portal'
+    | '/vending'
     | '/zakaznik'
     | '/dispatcer/crm/$contactId'
     | '/dispatcer/zamestnanci/$employeeId'
     | '/ridic/pod/$rideId'
+    | '/ridic/vending/$visitId'
+    | '/vending/lokace/$locationId'
+    | '/vending/navstevy/$visitId'
+    | '/ridic/vending'
   id:
     | '__root__'
     | '/'
@@ -461,7 +675,11 @@ export interface FileRouteTypes {
     | '/prihlaseni'
     | '/registrace'
     | '/ridic'
+    | '/vending'
+    | '/vending-portal'
     | '/zakaznik'
+    | '/dispatcer/ai-pristup'
+    | '/dispatcer/archiv'
     | '/dispatcer/crm'
     | '/dispatcer/fakturace'
     | '/dispatcer/kalendar'
@@ -472,22 +690,38 @@ export interface FileRouteTypes {
     | '/dispatcer/uzivatele'
     | '/dispatcer/zamestnanci'
     | '/dispatcer/zasilky'
+    | '/hodnoceni/$token'
     | '/ridic/dostupnost'
     | '/ridic/gps'
     | '/ridic/profil'
+    | '/ridic/vending'
     | '/ridic/zakazky'
     | '/sledovani/$token'
+    | '/vending/incidenty'
+    | '/vending/klienti'
+    | '/vending/kpi'
+    | '/vending/lokace'
+    | '/vending/mapa'
+    | '/vending/navstevy'
+    | '/vending/sablony'
     | '/zakaznik/faktury'
     | '/zakaznik/nova-zasilka'
     | '/zakaznik/profil'
+    | '/zakaznik/sablony'
     | '/zakaznik/uctenky'
     | '/zakaznik/zasilky'
     | '/dispatcer/'
     | '/ridic/'
+    | '/vending-portal/'
+    | '/vending/'
     | '/zakaznik/'
     | '/dispatcer/crm/$contactId'
     | '/dispatcer/zamestnanci/$employeeId'
     | '/ridic/pod/$rideId'
+    | '/ridic/vending/$visitId'
+    | '/vending/lokace/$locationId'
+    | '/vending/navstevy/$visitId'
+    | '/ridic/vending/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -503,7 +737,10 @@ export interface RootRouteChildren {
   PrihlaseniRoute: typeof PrihlaseniRoute
   RegistraceRoute: typeof RegistraceRoute
   RidicRoute: typeof RidicRouteWithChildren
+  VendingRoute: typeof VendingRouteWithChildren
+  VendingPortalRoute: typeof VendingPortalRouteWithChildren
   ZakaznikRoute: typeof ZakaznikRouteWithChildren
+  HodnoceniTokenRoute: typeof HodnoceniTokenRoute
   SledovaniTokenRoute: typeof SledovaniTokenRoute
 }
 
@@ -514,6 +751,20 @@ declare module '@tanstack/react-router' {
       path: '/zakaznik'
       fullPath: '/zakaznik'
       preLoaderRoute: typeof ZakaznikRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vending-portal': {
+      id: '/vending-portal'
+      path: '/vending-portal'
+      fullPath: '/vending-portal'
+      preLoaderRoute: typeof VendingPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vending': {
+      id: '/vending'
+      path: '/vending'
+      fullPath: '/vending'
+      preLoaderRoute: typeof VendingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ridic': {
@@ -607,6 +858,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ZakaznikIndexRouteImport
       parentRoute: typeof ZakaznikRoute
     }
+    '/vending/': {
+      id: '/vending/'
+      path: '/'
+      fullPath: '/vending/'
+      preLoaderRoute: typeof VendingIndexRouteImport
+      parentRoute: typeof VendingRoute
+    }
+    '/vending-portal/': {
+      id: '/vending-portal/'
+      path: '/'
+      fullPath: '/vending-portal/'
+      preLoaderRoute: typeof VendingPortalIndexRouteImport
+      parentRoute: typeof VendingPortalRoute
+    }
     '/ridic/': {
       id: '/ridic/'
       path: '/'
@@ -635,6 +900,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ZakaznikUctenkyRouteImport
       parentRoute: typeof ZakaznikRoute
     }
+    '/zakaznik/sablony': {
+      id: '/zakaznik/sablony'
+      path: '/sablony'
+      fullPath: '/zakaznik/sablony'
+      preLoaderRoute: typeof ZakaznikSablonyRouteImport
+      parentRoute: typeof ZakaznikRoute
+    }
     '/zakaznik/profil': {
       id: '/zakaznik/profil'
       path: '/profil'
@@ -656,6 +928,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ZakaznikFakturyRouteImport
       parentRoute: typeof ZakaznikRoute
     }
+    '/vending/sablony': {
+      id: '/vending/sablony'
+      path: '/sablony'
+      fullPath: '/vending/sablony'
+      preLoaderRoute: typeof VendingSablonyRouteImport
+      parentRoute: typeof VendingRoute
+    }
+    '/vending/navstevy': {
+      id: '/vending/navstevy'
+      path: '/navstevy'
+      fullPath: '/vending/navstevy'
+      preLoaderRoute: typeof VendingNavstevyRouteImport
+      parentRoute: typeof VendingRoute
+    }
+    '/vending/mapa': {
+      id: '/vending/mapa'
+      path: '/mapa'
+      fullPath: '/vending/mapa'
+      preLoaderRoute: typeof VendingMapaRouteImport
+      parentRoute: typeof VendingRoute
+    }
+    '/vending/lokace': {
+      id: '/vending/lokace'
+      path: '/lokace'
+      fullPath: '/vending/lokace'
+      preLoaderRoute: typeof VendingLokaceRouteImport
+      parentRoute: typeof VendingRoute
+    }
+    '/vending/kpi': {
+      id: '/vending/kpi'
+      path: '/kpi'
+      fullPath: '/vending/kpi'
+      preLoaderRoute: typeof VendingKpiRouteImport
+      parentRoute: typeof VendingRoute
+    }
+    '/vending/klienti': {
+      id: '/vending/klienti'
+      path: '/klienti'
+      fullPath: '/vending/klienti'
+      preLoaderRoute: typeof VendingKlientiRouteImport
+      parentRoute: typeof VendingRoute
+    }
+    '/vending/incidenty': {
+      id: '/vending/incidenty'
+      path: '/incidenty'
+      fullPath: '/vending/incidenty'
+      preLoaderRoute: typeof VendingIncidentyRouteImport
+      parentRoute: typeof VendingRoute
+    }
     '/sledovani/$token': {
       id: '/sledovani/$token'
       path: '/sledovani/$token'
@@ -668,6 +989,13 @@ declare module '@tanstack/react-router' {
       path: '/zakazky'
       fullPath: '/ridic/zakazky'
       preLoaderRoute: typeof RidicZakazkyRouteImport
+      parentRoute: typeof RidicRoute
+    }
+    '/ridic/vending': {
+      id: '/ridic/vending'
+      path: '/vending'
+      fullPath: '/ridic/vending'
+      preLoaderRoute: typeof RidicVendingRouteImport
       parentRoute: typeof RidicRoute
     }
     '/ridic/profil': {
@@ -690,6 +1018,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/ridic/dostupnost'
       preLoaderRoute: typeof RidicDostupnostRouteImport
       parentRoute: typeof RidicRoute
+    }
+    '/hodnoceni/$token': {
+      id: '/hodnoceni/$token'
+      path: '/hodnoceni/$token'
+      fullPath: '/hodnoceni/$token'
+      preLoaderRoute: typeof HodnoceniTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dispatcer/zasilky': {
       id: '/dispatcer/zasilky'
@@ -761,6 +1096,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DispatcerCrmRouteImport
       parentRoute: typeof DispatcerRoute
     }
+    '/dispatcer/archiv': {
+      id: '/dispatcer/archiv'
+      path: '/archiv'
+      fullPath: '/dispatcer/archiv'
+      preLoaderRoute: typeof DispatcerArchivRouteImport
+      parentRoute: typeof DispatcerRoute
+    }
+    '/dispatcer/ai-pristup': {
+      id: '/dispatcer/ai-pristup'
+      path: '/ai-pristup'
+      fullPath: '/dispatcer/ai-pristup'
+      preLoaderRoute: typeof DispatcerAiPristupRouteImport
+      parentRoute: typeof DispatcerRoute
+    }
+    '/ridic/vending/': {
+      id: '/ridic/vending/'
+      path: '/'
+      fullPath: '/ridic/vending/'
+      preLoaderRoute: typeof RidicVendingIndexRouteImport
+      parentRoute: typeof RidicVendingRoute
+    }
+    '/vending/navstevy/$visitId': {
+      id: '/vending/navstevy/$visitId'
+      path: '/$visitId'
+      fullPath: '/vending/navstevy/$visitId'
+      preLoaderRoute: typeof VendingNavstevyVisitIdRouteImport
+      parentRoute: typeof VendingNavstevyRoute
+    }
+    '/vending/lokace/$locationId': {
+      id: '/vending/lokace/$locationId'
+      path: '/$locationId'
+      fullPath: '/vending/lokace/$locationId'
+      preLoaderRoute: typeof VendingLokaceLocationIdRouteImport
+      parentRoute: typeof VendingLokaceRoute
+    }
+    '/ridic/vending/$visitId': {
+      id: '/ridic/vending/$visitId'
+      path: '/$visitId'
+      fullPath: '/ridic/vending/$visitId'
+      preLoaderRoute: typeof RidicVendingVisitIdRouteImport
+      parentRoute: typeof RidicVendingRoute
+    }
     '/ridic/pod/$rideId': {
       id: '/ridic/pod/$rideId'
       path: '/pod/$rideId'
@@ -809,6 +1186,8 @@ const DispatcerZamestnanciRouteWithChildren =
   DispatcerZamestnanciRoute._addFileChildren(DispatcerZamestnanciRouteChildren)
 
 interface DispatcerRouteChildren {
+  DispatcerAiPristupRoute: typeof DispatcerAiPristupRoute
+  DispatcerArchivRoute: typeof DispatcerArchivRoute
   DispatcerCrmRoute: typeof DispatcerCrmRouteWithChildren
   DispatcerFakturaceRoute: typeof DispatcerFakturaceRoute
   DispatcerKalendarRoute: typeof DispatcerKalendarRoute
@@ -823,6 +1202,8 @@ interface DispatcerRouteChildren {
 }
 
 const DispatcerRouteChildren: DispatcerRouteChildren = {
+  DispatcerAiPristupRoute: DispatcerAiPristupRoute,
+  DispatcerArchivRoute: DispatcerArchivRoute,
   DispatcerCrmRoute: DispatcerCrmRouteWithChildren,
   DispatcerFakturaceRoute: DispatcerFakturaceRoute,
   DispatcerKalendarRoute: DispatcerKalendarRoute,
@@ -840,10 +1221,25 @@ const DispatcerRouteWithChildren = DispatcerRoute._addFileChildren(
   DispatcerRouteChildren,
 )
 
+interface RidicVendingRouteChildren {
+  RidicVendingVisitIdRoute: typeof RidicVendingVisitIdRoute
+  RidicVendingIndexRoute: typeof RidicVendingIndexRoute
+}
+
+const RidicVendingRouteChildren: RidicVendingRouteChildren = {
+  RidicVendingVisitIdRoute: RidicVendingVisitIdRoute,
+  RidicVendingIndexRoute: RidicVendingIndexRoute,
+}
+
+const RidicVendingRouteWithChildren = RidicVendingRoute._addFileChildren(
+  RidicVendingRouteChildren,
+)
+
 interface RidicRouteChildren {
   RidicDostupnostRoute: typeof RidicDostupnostRoute
   RidicGpsRoute: typeof RidicGpsRoute
   RidicProfilRoute: typeof RidicProfilRoute
+  RidicVendingRoute: typeof RidicVendingRouteWithChildren
   RidicZakazkyRoute: typeof RidicZakazkyRoute
   RidicIndexRoute: typeof RidicIndexRoute
   RidicPodRideIdRoute: typeof RidicPodRideIdRoute
@@ -853,6 +1249,7 @@ const RidicRouteChildren: RidicRouteChildren = {
   RidicDostupnostRoute: RidicDostupnostRoute,
   RidicGpsRoute: RidicGpsRoute,
   RidicProfilRoute: RidicProfilRoute,
+  RidicVendingRoute: RidicVendingRouteWithChildren,
   RidicZakazkyRoute: RidicZakazkyRoute,
   RidicIndexRoute: RidicIndexRoute,
   RidicPodRideIdRoute: RidicPodRideIdRoute,
@@ -860,10 +1257,72 @@ const RidicRouteChildren: RidicRouteChildren = {
 
 const RidicRouteWithChildren = RidicRoute._addFileChildren(RidicRouteChildren)
 
+interface VendingLokaceRouteChildren {
+  VendingLokaceLocationIdRoute: typeof VendingLokaceLocationIdRoute
+}
+
+const VendingLokaceRouteChildren: VendingLokaceRouteChildren = {
+  VendingLokaceLocationIdRoute: VendingLokaceLocationIdRoute,
+}
+
+const VendingLokaceRouteWithChildren = VendingLokaceRoute._addFileChildren(
+  VendingLokaceRouteChildren,
+)
+
+interface VendingNavstevyRouteChildren {
+  VendingNavstevyVisitIdRoute: typeof VendingNavstevyVisitIdRoute
+}
+
+const VendingNavstevyRouteChildren: VendingNavstevyRouteChildren = {
+  VendingNavstevyVisitIdRoute: VendingNavstevyVisitIdRoute,
+}
+
+const VendingNavstevyRouteWithChildren = VendingNavstevyRoute._addFileChildren(
+  VendingNavstevyRouteChildren,
+)
+
+interface VendingRouteChildren {
+  VendingIncidentyRoute: typeof VendingIncidentyRoute
+  VendingKlientiRoute: typeof VendingKlientiRoute
+  VendingKpiRoute: typeof VendingKpiRoute
+  VendingLokaceRoute: typeof VendingLokaceRouteWithChildren
+  VendingMapaRoute: typeof VendingMapaRoute
+  VendingNavstevyRoute: typeof VendingNavstevyRouteWithChildren
+  VendingSablonyRoute: typeof VendingSablonyRoute
+  VendingIndexRoute: typeof VendingIndexRoute
+}
+
+const VendingRouteChildren: VendingRouteChildren = {
+  VendingIncidentyRoute: VendingIncidentyRoute,
+  VendingKlientiRoute: VendingKlientiRoute,
+  VendingKpiRoute: VendingKpiRoute,
+  VendingLokaceRoute: VendingLokaceRouteWithChildren,
+  VendingMapaRoute: VendingMapaRoute,
+  VendingNavstevyRoute: VendingNavstevyRouteWithChildren,
+  VendingSablonyRoute: VendingSablonyRoute,
+  VendingIndexRoute: VendingIndexRoute,
+}
+
+const VendingRouteWithChildren =
+  VendingRoute._addFileChildren(VendingRouteChildren)
+
+interface VendingPortalRouteChildren {
+  VendingPortalIndexRoute: typeof VendingPortalIndexRoute
+}
+
+const VendingPortalRouteChildren: VendingPortalRouteChildren = {
+  VendingPortalIndexRoute: VendingPortalIndexRoute,
+}
+
+const VendingPortalRouteWithChildren = VendingPortalRoute._addFileChildren(
+  VendingPortalRouteChildren,
+)
+
 interface ZakaznikRouteChildren {
   ZakaznikFakturyRoute: typeof ZakaznikFakturyRoute
   ZakaznikNovaZasilkaRoute: typeof ZakaznikNovaZasilkaRoute
   ZakaznikProfilRoute: typeof ZakaznikProfilRoute
+  ZakaznikSablonyRoute: typeof ZakaznikSablonyRoute
   ZakaznikUctenkyRoute: typeof ZakaznikUctenkyRoute
   ZakaznikZasilkyRoute: typeof ZakaznikZasilkyRoute
   ZakaznikIndexRoute: typeof ZakaznikIndexRoute
@@ -873,6 +1332,7 @@ const ZakaznikRouteChildren: ZakaznikRouteChildren = {
   ZakaznikFakturyRoute: ZakaznikFakturyRoute,
   ZakaznikNovaZasilkaRoute: ZakaznikNovaZasilkaRoute,
   ZakaznikProfilRoute: ZakaznikProfilRoute,
+  ZakaznikSablonyRoute: ZakaznikSablonyRoute,
   ZakaznikUctenkyRoute: ZakaznikUctenkyRoute,
   ZakaznikZasilkyRoute: ZakaznikZasilkyRoute,
   ZakaznikIndexRoute: ZakaznikIndexRoute,
@@ -895,7 +1355,10 @@ const rootRouteChildren: RootRouteChildren = {
   PrihlaseniRoute: PrihlaseniRoute,
   RegistraceRoute: RegistraceRoute,
   RidicRoute: RidicRouteWithChildren,
+  VendingRoute: VendingRouteWithChildren,
+  VendingPortalRoute: VendingPortalRouteWithChildren,
   ZakaznikRoute: ZakaznikRouteWithChildren,
+  HodnoceniTokenRoute: HodnoceniTokenRoute,
   SledovaniTokenRoute: SledovaniTokenRoute,
 }
 export const routeTree = rootRouteImport
