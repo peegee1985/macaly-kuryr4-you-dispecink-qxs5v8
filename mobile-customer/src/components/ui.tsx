@@ -218,7 +218,6 @@ const tabs: Array<{ key: MainTab; label: string; icon: IconName; activeIcon: Ico
   { key: "home", label: "Přehled", icon: "grid-outline", activeIcon: "grid" },
   { key: "rides", label: "Zásilky", icon: "cube-outline", activeIcon: "cube" },
   { key: "new", label: "Objednat", icon: "add-circle-outline", activeIcon: "add-circle" },
-  { key: "chat", label: "Chat", icon: "chatbubbles-outline", activeIcon: "chatbubbles" },
   { key: "more", label: "Více", icon: "menu-outline", activeIcon: "menu" },
 ];
 

@@ -9,7 +9,7 @@ export type RideStatus =
   | "failed";
 
 export type CargoType = "envelope" | "parcel" | "box" | "pallet" | "other";
-export type MainTab = "home" | "rides" | "new" | "chat" | "more";
+export type MainTab = "home" | "rides" | "new" | "more";
 export type MorePage = "menu" | "profile" | "templates" | "documents" | "receipts";
 
 export type CustomerUser = {
@@ -132,22 +132,4 @@ export type CustomerNotification = {
   read: boolean;
   type: "ride_status" | "ride_assigned" | "invoice" | "approval" | "system";
   rideId?: string;
-};
-
-export type ChatUser = { _id: string; name: string; role: string; email: string };
-export type ChatConversation = {
-  partnerId: string;
-  partnerName: string;
-  partnerRole: string;
-  lastMessage: string;
-  lastAt: number;
-  unread: number;
-};
-export type ChatMessage = {
-  _id: string;
-  _creationTime: number;
-  senderId: string;
-  receiverId: string;
-  text: string;
-  read: boolean;
 };

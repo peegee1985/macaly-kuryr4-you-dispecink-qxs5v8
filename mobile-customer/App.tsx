@@ -10,7 +10,6 @@ import { useCustomerNotifications } from "./src/hooks/useCustomerNotifications";
 import { api } from "./src/lib/api";
 import { secureAuthStorage } from "./src/lib/storage";
 import { AccessScreen, AccountStateScreen, MissingConfigurationScreen } from "./src/screens/AuthScreens";
-import { ChatScreen } from "./src/screens/ChatScreen";
 import { DashboardScreen } from "./src/screens/DashboardScreen";
 import { MoreScreen } from "./src/screens/MoreScreen";
 import { NewRideScreen } from "./src/screens/NewRideScreen";
@@ -66,7 +65,6 @@ function CustomerApp({ user, onSignOut }: { user: CustomerUser; onSignOut: () =>
   const [template, setTemplate] = useState<RideTemplate | undefined>();
   const [notificationsVisible, setNotificationsVisible] = useState(false);
   const rides = useQuery(api.rides.getMyRides, {}) as Ride[] | undefined;
-  const unreadChat = (useQuery(api.chat.getUnreadChatCount, {}) as number | undefined) ?? 0;
   const unreadNotifications = (useQuery(api.notifications.getUnreadCount, {}) as number | undefined) ?? 0;
   const notificationSettings = useCustomerNotifications();
 
@@ -100,7 +98,6 @@ function CustomerApp({ user, onSignOut }: { user: CustomerUser; onSignOut: () =>
         ) : null}
         {tab === "rides" ? <RidesScreen onOpenRide={setSelectedRide} onNewRide={() => openNew()} /> : null}
         {tab === "new" ? <NewRideScreen initialTemplate={template} onCreated={() => { setTemplate(undefined); setTab("rides"); }} /> : null}
-        {tab === "chat" ? <ChatScreen user={user} /> : null}
         {tab === "more" ? (
           <MoreScreen
             user={user}
@@ -112,7 +109,7 @@ function CustomerApp({ user, onSignOut }: { user: CustomerUser; onSignOut: () =>
           />
         ) : null}
       </View>
-      <BottomTabs active={tab} onChange={changeTab} badges={{ chat: unreadChat, more: unreadNotifications }} />
+      <BottomTabs active={tab} onChange={changeTab} badges={{ more: unreadNotifications }} />
       <RideDetailModal ride={selectedRide} onClose={() => setSelectedRide(null)} />
       <NotificationsModal visible={notificationsVisible} onClose={() => setNotificationsVisible(false)} onOpenRide={openRideById} />
     </View>

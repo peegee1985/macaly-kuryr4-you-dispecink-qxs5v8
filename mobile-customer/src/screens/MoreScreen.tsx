@@ -167,7 +167,7 @@ function ProfilePage({ user, notifications, onBack, onSignOut }: { user: Custome
       <Card style={styles.sectionCard}>
         <SectionTitle title="Oznámení v zařízení" />
         <View style={styles.switchRow}>
-          <View style={styles.switchCopy}><Text style={styles.switchTitle}>Stavy zásilek a zprávy</Text><Text style={styles.switchText}>Zobrazovat upozornění také na zamčené obrazovce.</Text></View>
+          <View style={styles.switchCopy}><Text style={styles.switchTitle}>Stavy zásilek</Text><Text style={styles.switchText}>Zobrazovat upozornění také na zamčené obrazovce.</Text></View>
           <Switch accessibilityLabel="Povolit oznámení v zařízení" disabled={notifications.busy} value={notifications.enabled} onValueChange={(value) => void notifications.setEnabled(value)} trackColor={switchTrackColors} thumbColor={notifications.enabled ? colors.primary : colors.textMuted} />
         </View>
         {notifications.error ? <Text style={styles.error}>{notifications.error}</Text> : null}

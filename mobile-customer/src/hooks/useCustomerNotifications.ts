@@ -5,16 +5,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { api } from "../lib/api";
 import { preferencesStorage } from "../lib/storage";
-import type { ChatConversation, CustomerNotification } from "../types";
+import type { CustomerNotification } from "../types";
 
 const ENABLED_KEY = "notifications-enabled";
 const LAST_SEEN_KEY = "notifications-last-seen";
-const LAST_CHAT_KEY = "chat-last-seen";
 const CHANNEL_ID = "k4y-customer";
 
 export function useCustomerNotifications() {
   const notifications = useQuery(api.notifications.getMyNotifications, {}) as CustomerNotification[] | undefined;
-  const conversations = useQuery(api.chat.getMyConversations, {}) as ChatConversation[] | undefined;
   const [enabled, setEnabledState] = useState(false);
   const [permission, setPermission] = useState<Notifications.PermissionStatus | null>(null);
   const [busy, setBusy] = useState(false);
@@ -59,32 +57,6 @@ export function useCustomerNotifications() {
     })();
   }, [enabled, notifications]);
 
-  useEffect(() => {
-    if (!initialized.current || !enabled || !conversations?.length) return;
-    void (async () => {
-      const stored = await preferencesStorage.get(LAST_CHAT_KEY);
-      const lastSeen = Number(stored ?? 0);
-      const latest = Math.max(...conversations.map((item) => item.lastAt));
-      if (!lastSeen) {
-        await preferencesStorage.set(LAST_CHAT_KEY, String(latest));
-        return;
-      }
-      const fresh = conversations.filter((item) => item.lastAt > lastSeen && item.unread > 0).sort((a, b) => a.lastAt - b.lastAt).slice(0, 5);
-      for (const item of fresh) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: `Zpráva od ${item.partnerName}`,
-            body: item.lastMessage,
-            sound: true,
-            data: { partnerId: item.partnerId },
-          },
-          trigger: Platform.OS === "android" ? { channelId: CHANNEL_ID } : null,
-        });
-      }
-      await preferencesStorage.set(LAST_CHAT_KEY, String(latest));
-    })();
-  }, [conversations, enabled]);
-
   const setEnabled = useCallback(async (next: boolean) => {
     setBusy(true);
     setError(null);
@@ -96,7 +68,7 @@ export function useCustomerNotifications() {
       }
       if (Platform.OS === "android") {
         await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-          name: "Zásilky a zprávy",
+          name: "Stavy zásilek",
           importance: Notifications.AndroidImportance.HIGH,
           lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
           sound: "default",
@@ -114,8 +86,6 @@ export function useCustomerNotifications() {
       }
       const latest = notifications?.[0]?._creationTime;
       if (latest) await preferencesStorage.set(LAST_SEEN_KEY, String(latest));
-      const latestChat = conversations?.[0]?.lastAt;
-      if (latestChat) await preferencesStorage.set(LAST_CHAT_KEY, String(latestChat));
       await preferencesStorage.set(ENABLED_KEY, "true");
       setEnabledState(true);
       return true;
@@ -125,7 +95,7 @@ export function useCustomerNotifications() {
     } finally {
       setBusy(false);
     }
-  }, [conversations, notifications]);
+  }, [notifications]);
 
   return { enabled, permission, busy, error, setEnabled };
 }
