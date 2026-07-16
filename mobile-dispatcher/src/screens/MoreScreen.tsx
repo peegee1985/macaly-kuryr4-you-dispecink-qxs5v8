@@ -22,6 +22,7 @@ import {
   SectionTitle,
   type IconName,
 } from "../components/ui";
+import { useOptionalDriverPresence } from "../hooks/useOptionalDriverPresence";
 import { api } from "../lib/api";
 import { formatDate, formatDateTime, formatMoney } from "../lib/format";
 import { colors, radius, spacing } from "../theme";
@@ -235,13 +236,11 @@ function UsersPage({ onBack }: { onBack: () => void }) {
   const users = useQuery(api.users.listUsersByRole, { role }) as
     | UserSummary[]
     | undefined;
-  const presence = useQuery(api.presence.listDriverPresence, {}) as
-    | DriverPresence[]
-    | undefined;
+  const presence = useOptionalDriverPresence();
   const updateStatus = useMutation(api.users.updateUserStatus);
   const approveCorporate = useMutation(api.users.approveCorporateAccount);
   const presenceByDriver = useMemo(
-    () => new Map((presence ?? []).map((item) => [item.driverId, item])),
+    () => new Map(presence.map((item) => [item.driverId, item])),
     [presence],
   );
   const visible = useMemo(
