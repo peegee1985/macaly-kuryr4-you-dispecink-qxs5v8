@@ -1,11 +1,12 @@
 {
-  "version": "0.3.0",
-  "versionCode": 3,
+  "version": "0.4.0",
+  "versionCode": 4,
   "minimumVersionCode": 3,
   "downloadUrl": "https://github.com/peegee1985/macaly-kuryr4-you-dispecink-qxs5v8/releases/download/driver-latest/kuryr4you-ridic.apk",
   "releaseNotes": [
     "POD s fotografiemi a podpisem příjemce",
     "Vícezastávkové zakázky a navigace celé trasy",
-    "Kontrola a stažení nové verze aplikace"
+    "Zakázky seřazené podle fáze a nejbližší realizace",
+    "Nová ikona aplikace K4Y"
   ]
 }

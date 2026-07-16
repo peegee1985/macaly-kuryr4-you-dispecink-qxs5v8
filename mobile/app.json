@@ -3,7 +3,7 @@
     "name": "Kuryr4You Řidič",
     "slug": "kuryr4you-ridic",
     "scheme": "kuryr4you",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0F111A",
@@ -16,9 +16,9 @@
     },
     "android": {
       "package": "cz.kuryr4you.driver",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0F111A"
       },
       "permissions": [
@@ -44,7 +44,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/notification-icon.png",
           "color": "#F59E0B",
           "defaultChannel": "k4y-driver-status"
         }
