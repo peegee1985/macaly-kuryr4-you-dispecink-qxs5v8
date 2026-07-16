@@ -45,6 +45,7 @@ export type Ride = {
   codEnabled?: boolean;
   codAmount?: number;
   codCollected?: boolean;
+  podDeliveredAt?: number;
   isMultiStop?: boolean;
   stops?: RideStop[];
 };

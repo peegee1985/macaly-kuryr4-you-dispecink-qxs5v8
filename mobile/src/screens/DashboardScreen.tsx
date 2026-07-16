@@ -6,6 +6,7 @@ import { RideCard } from "../components/RideCard";
 import { AppUpdateCard } from "../components/AppUpdateCard";
 import { AppButton, Card, EmptyState, PageHeader, Screen } from "../components/ui";
 import { api } from "../lib/api";
+import { sortActiveRides } from "../lib/rideSort";
 import { colors, spacing } from "../theme";
 import type { DriverUser, Ride, ServiceVisit } from "../types";
 
@@ -32,7 +33,7 @@ export function DashboardScreen({
   const visits = useQuery(api.vending.getDriverTodayVisits, {}) as ServiceVisit[] | undefined;
   const unread = useQuery(api.notifications.getUnreadCount, {}) as number | undefined;
 
-  const active = (rides ?? []).filter((ride) => !["delivered", "cancelled", "failed"].includes(ride.status));
+  const active = sortActiveRides((rides ?? []).filter((ride) => !["delivered", "cancelled", "failed"].includes(ride.status)));
   const today = new Date().toDateString();
   const todayCount = (rides ?? []).filter((ride) => new Date(ride.requestedPickupAt).toDateString() === today).length;
 
