@@ -39,7 +39,7 @@ export type DriverUser = {
   name?: string;
   phone?: string;
   role: string;
-  status: "pending" | "active" | "blocked";
+  status: "pending" | "active" | "inactive" | "blocked";
   vehicleType?: string;
   vehiclePlate?: string;
 };

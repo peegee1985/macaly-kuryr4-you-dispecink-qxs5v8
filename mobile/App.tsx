@@ -6,10 +6,15 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
 import { BottomTabs, LoadingView } from "./src/components/ui";
+import { useDriverPresence } from "./src/hooks/useDriverPresence";
 import { useGpsTracking } from "./src/hooks/useGpsTracking";
 import { api } from "./src/lib/api";
 import { secureAuthStorage } from "./src/lib/storage";
-import { AccountStateScreen, LoginScreen, MissingConfigurationScreen } from "./src/screens/AuthScreens";
+import {
+  AccountStateScreen,
+  LoginScreen,
+  MissingConfigurationScreen,
+} from "./src/screens/AuthScreens";
 import { AvailabilityScreen } from "./src/screens/AvailabilityScreen";
 import { DashboardScreen } from "./src/screens/DashboardScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
@@ -21,9 +26,12 @@ import { colors } from "./src/theme";
 import type { DriverUser, MainTab, Ride, ServiceVisit } from "./src/types";
 
 const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
-const convex = new ConvexReactClient(convexUrl || "https://example.convex.cloud", {
-  unsavedChangesWarning: false,
-});
+const convex = new ConvexReactClient(
+  convexUrl || "https://example.convex.cloud",
+  {
+    unsavedChangesWarning: false,
+  },
+);
 
 export default function App() {
   if (!convexUrl) {
@@ -60,21 +68,32 @@ function AuthenticatedApp() {
   if (!user) return <LoadingView label="Profil nebyl nalezen…" />;
 
   const logout = () => void signOut();
-  if (user.role !== "driver") return <AccountStateScreen state="wrong-role" onSignOut={logout} />;
-  if (user.status === "pending") return <AccountStateScreen state="pending" onSignOut={logout} />;
-  if (user.status === "blocked") return <AccountStateScreen state="blocked" onSignOut={logout} />;
+  if (user.role !== "driver")
+    return <AccountStateScreen state="wrong-role" onSignOut={logout} />;
+  if (user.status === "pending")
+    return <AccountStateScreen state="pending" onSignOut={logout} />;
+  if (user.status !== "active")
+    return <AccountStateScreen state="inactive" onSignOut={logout} />;
 
   return <DriverApp user={user} onSignOut={logout} />;
 }
 
-function DriverApp({ user, onSignOut }: { user: DriverUser; onSignOut: () => void }) {
+function DriverApp({
+  user,
+  onSignOut,
+}: {
+  user: DriverUser;
+  onSignOut: () => void;
+}) {
   const [tab, setTab] = useState<MainTab>("home");
   const [selectedRide, setSelectedRide] = useState<Ride | null>(null);
   const [selectedVisit, setSelectedVisit] = useState<ServiceVisit | null>(null);
   const gps = useGpsTracking();
+  const presence = useDriverPresence();
 
   const logout = async () => {
     if (gps.tracking) await gps.stop();
+    await presence.setOffline().catch(() => undefined);
     onSignOut();
   };
 
@@ -93,14 +112,24 @@ function DriverApp({ user, onSignOut }: { user: DriverUser; onSignOut: () => voi
           />
         ) : null}
         {tab === "rides" ? <RidesScreen onOpenRide={setSelectedRide} /> : null}
-        {tab === "vending" ? <VendingScreen onOpenVisit={setSelectedVisit} /> : null}
+        {tab === "vending" ? (
+          <VendingScreen onOpenVisit={setSelectedVisit} />
+        ) : null}
         {tab === "availability" ? <AvailabilityScreen /> : null}
-        {tab === "profile" ? <ProfileScreen user={user} onSignOut={() => void logout()} /> : null}
+        {tab === "profile" ? (
+          <ProfileScreen user={user} onSignOut={() => void logout()} />
+        ) : null}
       </View>
 
       <BottomTabs active={tab} onChange={setTab} />
-      <RideDetailModal ride={selectedRide} onClose={() => setSelectedRide(null)} />
-      <VisitDetailModal visit={selectedVisit} onClose={() => setSelectedVisit(null)} />
+      <RideDetailModal
+        ride={selectedRide}
+        onClose={() => setSelectedRide(null)}
+      />
+      <VisitDetailModal
+        visit={selectedVisit}
+        onClose={() => setSelectedVisit(null)}
+      />
     </View>
   );
 }

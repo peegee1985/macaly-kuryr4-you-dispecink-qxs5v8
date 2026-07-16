@@ -45,6 +45,16 @@ export type UserSummary = {
   companyAddress?: string;
   companyIco?: string;
   companyDic?: string;
+  vehicleType?: string;
+  vehiclePlate?: string;
+  driverNotes?: string;
+  receiptEnabled?: boolean;
+};
+
+export type DriverPresence = {
+  driverId: string;
+  isOnline: boolean;
+  lastSeenAt: number;
 };
 
 export type Ride = {
@@ -112,7 +122,12 @@ export type DispatcherNotification = {
   rideId?: string;
 };
 
-export type ChatUser = { _id: string; name: string; role: string; email: string };
+export type ChatUser = {
+  _id: string;
+  name: string;
+  role: string;
+  email: string;
+};
 export type ChatConversation = {
   partnerId: string;
   partnerName: string;
