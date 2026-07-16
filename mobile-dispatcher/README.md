@@ -17,9 +17,9 @@ npx expo-doctor@latest
 EXPO_PUBLIC_CONVEX_URL=https://amicable-dogfish-440.eu-west-1.convex.cloud npx expo export --platform android
 ```
 
-## Nativní mapa
+## Mapa bez API klíče
 
-Pro vykreslení Google Maps přidejte v nastavení repozitáře GitHub Secret `GOOGLE_MAPS_API_KEY` s povoleným Maps SDK for Android a omezením na balíček `cz.kuryr4you.dispatcher`. Bez klíče aplikace dál ukazuje živý seznam GPS řidičů a nabídne otevření polohy v systémových mapách.
+Živá mapa používá Leaflet a OpenStreetMap dlaždice v nativním Android WebView. Nevyžaduje Google Maps API ani žádný API klíč. Atribuce OpenStreetMap je zobrazena přímo v mapě.
 
 ## Funkce první verze
 

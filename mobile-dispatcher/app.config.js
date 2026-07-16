@@ -1,5 +1,3 @@
-const mapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-
 module.exports = {
   expo: {
     name: "Kuryr4You Dispecink",
@@ -20,7 +18,6 @@ module.exports = {
       },
       permissions: ["android.permission.POST_NOTIFICATIONS"],
       predictiveBackGestureEnabled: true,
-      ...(mapsApiKey ? { config: { googleMaps: { apiKey: mapsApiKey } } } : {}),
     },
     plugins: [
       ["expo-notifications", { icon: "./assets/icon.png", color: "#F59E0B", defaultChannel: "k4y-dispatcher" }],
