@@ -37,9 +37,9 @@ module.exports = function withStandaloneApk(config) {
       contents = contents.replace(
         /release \{\s+\/\/ Caution![\s\S]*?signingConfig signingConfigs\.debug/,
         `release {
-            // CI uses the permanent Kuryr4You release key. Local builds safely
-            // fall back to the debug key unless signing variables are set.
-            signingConfig System.getenv("K4Y_KEYSTORE_PATH") ? signingConfigs.release : signingConfigs.debug`,
+            // A permanent key can be supplied locally. Without it Gradle emits
+            // an unsigned APK that can be signed outside CI.
+            signingConfig System.getenv("K4Y_KEYSTORE_PATH") ? signingConfigs.release : null`,
       );
     }
 

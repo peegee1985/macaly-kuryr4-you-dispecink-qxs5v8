@@ -12,7 +12,7 @@ on:
       - ".github/workflows/android-driver-release.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: android-driver-release
@@ -56,55 +56,32 @@ jobs:
       - name: Validate TypeScript
         run: npm run typecheck
 
-      - name: Validate signing secrets
-        env:
-          DRIVER_KEYSTORE_BASE64: ${{ secrets.DRIVER_KEYSTORE_BASE64 }}
-          DRIVER_KEYSTORE_PASSWORD: ${{ secrets.DRIVER_KEYSTORE_PASSWORD }}
-          DRIVER_KEY_ALIAS: ${{ secrets.DRIVER_KEY_ALIAS }}
-          DRIVER_KEY_PASSWORD: ${{ secrets.DRIVER_KEY_PASSWORD }}
-        run: |
-          test -n "$DRIVER_KEYSTORE_BASE64"
-          test -n "$DRIVER_KEYSTORE_PASSWORD"
-          test -n "$DRIVER_KEY_ALIAS"
-          test -n "$DRIVER_KEY_PASSWORD"
-
-      - name: Restore release keystore
-        env:
-          DRIVER_KEYSTORE_BASE64: ${{ secrets.DRIVER_KEYSTORE_BASE64 }}
-        run: echo "$DRIVER_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/kuryr4you-driver.jks"
-
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install
 
-      - name: Build signed production APK
+      - name: Build unsigned production APK
         working-directory: mobile/android
-        env:
-          K4Y_KEYSTORE_PATH: ${{ runner.temp }}/kuryr4you-driver.jks
-          K4Y_KEYSTORE_PASSWORD: ${{ secrets.DRIVER_KEYSTORE_PASSWORD }}
-          K4Y_KEY_ALIAS: ${{ secrets.DRIVER_KEY_ALIAS }}
-          K4Y_KEY_PASSWORD: ${{ secrets.DRIVER_KEY_PASSWORD }}
         run: ./gradlew assembleRelease
 
-      - name: Prepare release asset
-        run: cp android/app/build/outputs/apk/release/app-release.apk android/app/build/outputs/apk/release/kuryr4you-ridic.apk
-
-      - name: Verify APK signature
+      - name: Prepare unsigned APK and signing tools
         run: |
-          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
-          test -n "$APKSIGNER"
-          "$APKSIGNER" verify --verbose android/app/build/outputs/apk/release/kuryr4you-ridic.apk
+          RELEASE_DIR="android/app/build/outputs/apk/release"
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          UNSIGNED_APK="$(find "$RELEASE_DIR" -maxdepth 1 -type f -name '*release*.apk' | head -1)"
+          test -n "$BUILD_TOOLS"
+          test -n "$UNSIGNED_APK"
+          cp "$UNSIGNED_APK" "$RELEASE_DIR/kuryr4you-ridic-unsigned.apk"
+          mkdir -p "$RELEASE_DIR/signing-tools/lib"
+          cp "$BUILD_TOOLS/apksigner" "$RELEASE_DIR/signing-tools/apksigner"
+          cp "$BUILD_TOOLS/zipalign" "$RELEASE_DIR/signing-tools/zipalign"
+          cp "$BUILD_TOOLS/lib/apksigner.jar" "$RELEASE_DIR/signing-tools/lib/apksigner.jar"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kuryr4you-ridic-release-apk
-          path: mobile/android/app/build/outputs/apk/release/kuryr4you-ridic.apk
+          name: kuryr4you-ridic-unsigned
+          path: |
+            mobile/android/app/build/outputs/apk/release/kuryr4you-ridic-unsigned.apk
+            mobile/android/app/build/outputs/apk/release/signing-tools
           if-no-files-found: error
           retention-days: 30
-
-      - name: Publish permanent download
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release view driver-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create driver-latest --repo "$GITHUB_REPOSITORY" --title "Kuryr4You Řidič – aktuální verze" --notes "Podepsaná produkční verze řidičské aplikace."
-          gh release upload driver-latest android/app/build/outputs/apk/release/kuryr4you-ridic.apk --repo "$GITHUB_REPOSITORY" --clobber
