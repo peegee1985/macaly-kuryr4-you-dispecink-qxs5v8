@@ -18,6 +18,31 @@ module.exports = function withStandaloneApk(config) {
       );
     }
 
+    if (!contents.includes("K4Y_KEYSTORE_PATH")) {
+      contents = contents.replace(
+        "signingConfigs {\n        debug {",
+        `signingConfigs {
+        release {
+            def keystorePath = System.getenv("K4Y_KEYSTORE_PATH")
+            if (keystorePath) {
+                storeFile file(keystorePath)
+                storePassword System.getenv("K4Y_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("K4Y_KEY_ALIAS")
+                keyPassword System.getenv("K4Y_KEY_PASSWORD")
+            }
+        }
+        debug {`,
+      );
+
+      contents = contents.replace(
+        /release \{\s+\/\/ Caution![\s\S]*?signingConfig signingConfigs\.debug/,
+        `release {
+            // A permanent key can be supplied locally. Without it Gradle emits
+            // an unsigned APK that can be signed outside CI.
+            signingConfig System.getenv("K4Y_KEYSTORE_PATH") ? signingConfigs.release : null`,
+      );
+    }
+
     gradleConfig.modResults.contents = contents;
     return gradleConfig;
   });

@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { RideCard } from "../components/RideCard";
+import { AppUpdateCard } from "../components/AppUpdateCard";
 import { AppButton, Card, EmptyState, IconButton, PageHeader, Screen, SectionTitle } from "../components/ui";
 import { isActiveRide } from "../lib/format";
 import { api } from "../lib/api";
@@ -38,6 +39,8 @@ export function DashboardScreen({
         subtitle={activeRides.length > 0 ? `${activeRides.length} aktivní zásilka právě probíhá` : "Vše doručeno. Připraveni na další zásilku?"}
         action={<IconButton icon="notifications-outline" badge={unreadNotifications} label="Oznámení" onPress={onOpenNotifications} />}
       />
+
+      <AppUpdateCard />
 
       <AppButton title="Objednat novou zásilku" icon="add" onPress={onNewRide} style={styles.primaryAction} />
 

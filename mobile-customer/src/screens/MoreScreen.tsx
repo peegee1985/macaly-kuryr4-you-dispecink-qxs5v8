@@ -6,6 +6,7 @@ import { Alert, Linking, Pressable, StyleSheet, Switch, Text, View } from "react
 
 import { AppButton, Card, EmptyState, FormField, IconButton, PageHeader, Screen, SectionTitle, type IconName } from "../components/ui";
 import { cargoLabel, formatDate, formatMoney } from "../lib/format";
+import { CUSTOMER_APP_VERSION } from "../lib/appVersion";
 import { api } from "../lib/api";
 import { colors, radius, spacing } from "../theme";
 import type { CustomerDocument, CustomerTemplate, CustomerUser, Invoice, MorePage, Receipt, RideTemplate } from "../types";
@@ -52,7 +53,7 @@ export function MoreScreen({
         <MenuItem icon="receipt-outline" title="Účtenky" subtitle="Doklady za dokončené přepravy" onPress={() => setPage("receipts")} />
         <MenuItem icon="notifications-outline" title="Oznámení" subtitle={unreadNotifications ? `${unreadNotifications} nepřečtených oznámení` : "Všechna oznámení jsou přečtená"} onPress={onOpenNotifications} badge={unreadNotifications} />
       </View>
-      <Text style={styles.version}>Kuryr4You Zákazník · verze 0.1.0</Text>
+      <Text style={styles.version}>Kuryr4You Zákazník · verze {CUSTOMER_APP_VERSION}</Text>
     </Screen>
   );
 }
