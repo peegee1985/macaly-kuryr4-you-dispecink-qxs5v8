@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { RideCard } from "../components/RideCard";
+import { AppUpdateCard } from "../components/AppUpdateCard";
 import { AppButton, Card, EmptyState, PageHeader, Screen } from "../components/ui";
 import { api } from "../lib/api";
 import { colors, spacing } from "../theme";
@@ -47,6 +48,8 @@ export function DashboardScreen({
           </Pressable>
         }
       />
+
+      <AppUpdateCard />
 
       <Card style={[styles.gpsCard, tracking && styles.gpsCardActive]}>
         <View style={styles.gpsTop}>

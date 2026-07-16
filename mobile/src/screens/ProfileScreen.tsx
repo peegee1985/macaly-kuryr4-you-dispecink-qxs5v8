@@ -5,6 +5,7 @@ import { Alert, Linking, StyleSheet, Switch, Text, TextInput, View } from "react
 
 import { AppButton, Card, PageHeader, Screen } from "../components/ui";
 import { api } from "../lib/api";
+import { DRIVER_APP_VERSION } from "../lib/appVersion";
 import { ensureStatusNotificationPermission, setStatusNotificationsEnabled } from "../lib/statusNotifications";
 import { colors, radius, spacing } from "../theme";
 import type { DriverUser } from "../types";
@@ -177,7 +178,7 @@ export function ProfileScreen({
         ])}
       />
 
-      <Text style={styles.version}>Kuryr4You Řidič · verze 0.2.0</Text>
+      <Text style={styles.version}>Kuryr4You Řidič · verze {DRIVER_APP_VERSION}</Text>
     </Screen>
   );
 }

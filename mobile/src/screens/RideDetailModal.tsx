@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Image,
@@ -14,6 +14,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import SignatureCanvas, { type SignatureViewRef } from "react-native-signature-canvas";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppButton, Card, StatusPill } from "../components/ui";
@@ -24,38 +25,85 @@ import type { Ride, RideStatus } from "../types";
 
 type PickedPhoto = { uri: string; mimeType?: string | null };
 
+const MAX_POD_PHOTOS = 4;
+const SIGNATURE_WEB_STYLE = `
+  .m-signature-pad { box-shadow: none; border: none; width: 100%; height: 100%; margin: 0; }
+  .m-signature-pad--body { border: none; left: 0; right: 0; top: 0; bottom: 0; }
+  .m-signature-pad--footer { display: none; margin: 0; }
+  body, html { width: 100%; height: 100%; overflow: hidden; background: #fff; }
+`;
+
 export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const liveRide = useQuery(api.rides.getRide, ride ? { rideId: ride._id } : "skip") as Ride | null | undefined;
   const current = liveRide ?? ride;
   const updateStatus = useMutation(api.rides.updateRideStatus);
   const selfAssign = useMutation(api.rides.selfAssignRide);
+  const reorderStops = useMutation(api.rides.reorderStops);
   const generateUploadUrl = useMutation(api.rides.generateUploadUrl);
   const submitPOD = useMutation(api.rides.submitPOD);
+  const signatureRef = useRef<SignatureViewRef>(null);
   const [busy, setBusy] = useState(false);
+  const [reordering, setReordering] = useState(false);
   const [podMode, setPodMode] = useState(false);
   const [recipient, setRecipient] = useState("");
-  const [photo, setPhoto] = useState<PickedPhoto | null>(null);
+  const [photos, setPhotos] = useState<PickedPhoto[]>([]);
+  const [signature, setSignature] = useState<string | null>(null);
+  const [signatureError, setSignatureError] = useState<string | null>(null);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
   const [codCollected, setCodCollected] = useState(false);
 
   useEffect(() => {
-    if (!ride) {
-      setPodMode(false);
-      setRecipient("");
-      setPhoto(null);
-      setCodCollected(false);
-    }
-  }, [ride]);
+    setPodMode(false);
+    setRecipient("");
+    setPhotos([]);
+    setSignature(null);
+    setSignatureError(null);
+    setScrollEnabled(true);
+    setCodCollected(false);
+  }, [ride?._id]);
 
   if (!current) return null;
+
+  const sortedStops = current.isMultiStop
+    ? [...(current.stops ?? [])].sort((a, b) => a.order - b.order)
+    : [];
 
   const openMap = async (address: string) => {
     const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
     await Linking.openURL(url);
   };
 
+  const openFullRoute = async () => {
+    const origin = encodeURIComponent(current.pickupAddress);
+    const destination = encodeURIComponent(current.deliveryAddress);
+    const waypoints = sortedStops.map((stop) => stop.address).join("|");
+    const waypointParam = waypoints ? `&waypoints=${encodeURIComponent(waypoints)}` : "";
+    await Linking.openURL(
+      `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${waypointParam}&travelmode=driving`,
+    );
+  };
+
   const call = async (phone?: string) => {
     if (phone) await Linking.openURL(`tel:${phone.replace(/\s/g, "")}`);
+  };
+
+  const moveStop = async (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= sortedStops.length) return;
+
+    const next = [...sortedStops];
+    [next[index], next[target]] = [next[target]!, next[index]!];
+    const normalized = next.map((stop, stopIndex) => ({ ...stop, order: stopIndex + 1 }));
+
+    setReordering(true);
+    try {
+      await reorderStops({ rideId: current._id, stops: normalized });
+    } catch (cause) {
+      Alert.alert("Pořadí nelze uložit", cause instanceof Error ? cause.message : "Zkuste to znovu.");
+    } finally {
+      setReordering(false);
+    }
   };
 
   const performPrimaryAction = async () => {
@@ -78,6 +126,11 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
   };
 
   const takePhoto = async () => {
+    if (photos.length >= MAX_POD_PHOTOS) {
+      Alert.alert("Limit fotografií", `K jednomu doručení lze přidat nejvýše ${MAX_POD_PHOTOS} fotografie.`);
+      return;
+    }
+
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
       Alert.alert("Fotoaparát není povolen", "Povolte fotoaparát v nastavení telefonu.");
@@ -89,7 +142,11 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
       allowsEditing: false,
     });
     if (!result.canceled && result.assets[0]) {
-      setPhoto({ uri: result.assets[0].uri, mimeType: result.assets[0].mimeType });
+      const asset = result.assets[0];
+      setPhotos((currentPhotos) => [
+        ...currentPhotos,
+        { uri: asset.uri, mimeType: asset.mimeType },
+      ].slice(0, MAX_POD_PHOTOS));
     }
   };
 
@@ -106,22 +163,43 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
     return payload.storageId;
   };
 
+  const uploadSignature = async (dataUrl: string) => {
+    const uploadUrl = await generateUploadUrl();
+    const blob = await (await fetch(dataUrl)).blob();
+    const response = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": "image/png" },
+      body: blob,
+    });
+    if (!response.ok) throw new Error("Podpis se nepodařilo nahrát.");
+    const payload = (await response.json()) as { storageId: string };
+    return payload.storageId;
+  };
+
   const finishDelivery = async () => {
     if (!recipient.trim()) {
       Alert.alert("Chybí příjemce", "Zadejte jméno osoby, která zásilku převzala.");
       return;
     }
-    if (!photo) {
+    if (photos.length === 0) {
       Alert.alert("Chybí fotografie", "Vyfoťte zásilku jako doklad o doručení.");
+      return;
+    }
+    if (!signature) {
+      Alert.alert("Chybí podpis", "Nechte příjemce podepsat převzetí zásilky.");
       return;
     }
 
     setBusy(true);
     try {
-      const storageId = await uploadPhoto(photo);
+      const [signatureId, photoIds] = await Promise.all([
+        uploadSignature(signature),
+        Promise.all(photos.map(uploadPhoto)),
+      ]);
       await submitPOD({
         rideId: current._id,
-        photoIds: [storageId],
+        photoIds,
+        signatureId,
         recipientName: recipient.trim(),
         codCollected: current.codEnabled ? codCollected : undefined,
       });
@@ -133,6 +211,12 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
     } finally {
       setBusy(false);
     }
+  };
+
+  const clearSignature = () => {
+    signatureRef.current?.clearSignature();
+    setSignature(null);
+    setSignatureError(null);
   };
 
   const primaryActions: Partial<Record<RideStatus, string>> = {
@@ -157,7 +241,12 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
           {!podMode ? <StatusPill status={current.status} /> : null}
         </View>
 
-        <ScrollView contentContainerStyle={[styles.content, { paddingBottom: primaryAction && !podMode ? 104 + insets.bottom : spacing.xxl + insets.bottom }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          scrollEnabled={scrollEnabled}
+          contentContainerStyle={[styles.content, { paddingBottom: primaryAction && !podMode ? 104 + insets.bottom : spacing.xxl + insets.bottom }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {podMode ? (
             <View style={styles.podForm}>
               <Card>
@@ -175,14 +264,79 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
                 />
               </View>
               <View>
-                <Text style={styles.fieldLabel}>Fotografie doručené zásilky *</Text>
-                {photo ? <Image source={{ uri: photo.uri }} style={styles.photo} /> : null}
-                <AppButton
-                  title={photo ? "Vyfotit znovu" : "Vyfotit zásilku"}
-                  icon="camera-outline"
-                  variant="secondary"
-                  onPress={() => void takePhoto()}
-                />
+                <View style={styles.fieldTitleRow}>
+                  <Text style={styles.fieldLabel}>Fotografie doručené zásilky *</Text>
+                  <Text style={styles.fieldCounter}>{photos.length}/{MAX_POD_PHOTOS}</Text>
+                </View>
+                {photos.length ? (
+                  <View style={styles.photoGrid}>
+                    {photos.map((photo, index) => (
+                      <View key={`${photo.uri}-${index}`} style={styles.photoWrap}>
+                        <Image source={{ uri: photo.uri }} style={styles.photo} />
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Odebrat fotografii ${index + 1}`}
+                          onPress={() => setPhotos((currentPhotos) => currentPhotos.filter((_, photoIndex) => photoIndex !== index))}
+                          style={styles.removePhoto}
+                        >
+                          <Ionicons name="close" size={18} color={colors.white} />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+                {photos.length < MAX_POD_PHOTOS ? (
+                  <AppButton
+                    title={photos.length ? "Přidat další fotografii" : "Vyfotit zásilku"}
+                    icon="camera-outline"
+                    variant="secondary"
+                    onPress={() => void takePhoto()}
+                  />
+                ) : null}
+              </View>
+              <View>
+                <View style={styles.fieldTitleRow}>
+                  <Text style={styles.fieldLabel}>Podpis příjemce *</Text>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Vymazat podpis" onPress={clearSignature} hitSlop={8}>
+                    <Text style={styles.clearSignature}>Vymazat</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.signaturePad}>
+                  <SignatureCanvas
+                    ref={signatureRef}
+                    onBegin={() => setScrollEnabled(false)}
+                    onEnd={() => {
+                      setScrollEnabled(true);
+                      signatureRef.current?.readSignature();
+                    }}
+                    onOK={(value) => {
+                      setSignature(value);
+                      setSignatureError(null);
+                    }}
+                    onEmpty={() => setSignature(null)}
+                    onClear={() => setSignature(null)}
+                    onError={(error) => {
+                      setScrollEnabled(true);
+                      setSignatureError(error.message || "Podpisovou plochu se nepodařilo načíst.");
+                    }}
+                    imageType="image/png"
+                    penColor="#111827"
+                    backgroundColor="#FFFFFF"
+                    minWidth={1.1}
+                    maxWidth={3}
+                    webStyle={SIGNATURE_WEB_STYLE}
+                    style={styles.signatureCanvas}
+                    webviewContainerStyle={styles.signatureCanvas}
+                    androidLayerType="hardware"
+                    nestedScrollEnabled
+                    showsVerticalScrollIndicator={false}
+                    webviewProps={{ cacheEnabled: false, allowFileAccess: false }}
+                  />
+                </View>
+                <Text style={[styles.signatureHelp, signature && styles.signatureReady]}>
+                  {signature ? "Podpis je zaznamenaný" : "Příjemce se podepíše prstem do bílé plochy"}
+                </Text>
+                {signatureError ? <Text style={styles.signatureError}>{signatureError}</Text> : null}
               </View>
               {current.codEnabled ? (
                 <Pressable style={[styles.codToggle, codCollected && styles.codToggleActive]} onPress={() => setCodCollected((value) => !value)}>
@@ -197,6 +351,21 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
             </View>
           ) : (
             <View style={styles.details}>
+              {sortedStops.length ? (
+                <Card style={styles.multiStopSummary}>
+                  <View style={styles.multiStopSummaryCopy}>
+                    <View style={styles.multiStopIcon}>
+                      <Ionicons name="git-branch-outline" size={21} color={colors.info} />
+                    </View>
+                    <View style={styles.flex}>
+                      <Text style={styles.multiStopTitle}>Vícezastávková trasa</Text>
+                      <Text style={styles.multiStopSubtitle}>{sortedStops.length} mezizastávek · pořadí lze upravit šipkami</Text>
+                    </View>
+                  </View>
+                  <AppButton title="Navigovat celou trasu" icon="navigate-outline" variant="secondary" onPress={() => void openFullRoute()} />
+                </Card>
+              ) : null}
+
               <RouteStop
                 label="VYZVEDNUTÍ"
                 address={current.pickupAddress}
@@ -206,6 +375,24 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
                 onMap={() => void openMap(current.pickupAddress)}
                 onCall={() => void call(current.pickupContactPhone)}
               />
+
+              {sortedStops.map((stop, index) => (
+                <RouteStop
+                  key={`${stop.address}-${stop.contactPhone}`}
+                  label={`ZASTÁVKA ${index + 1}`}
+                  address={stop.address}
+                  name={stop.contactName}
+                  phone={stop.contactPhone}
+                  notes={stop.notes}
+                  color={colors.info}
+                  onMap={() => void openMap(stop.address)}
+                  onCall={() => void call(stop.contactPhone)}
+                  onMoveUp={index > 0 ? () => void moveStop(index, -1) : undefined}
+                  onMoveDown={index < sortedStops.length - 1 ? () => void moveStop(index, 1) : undefined}
+                  reorderDisabled={reordering}
+                />
+              ))}
+
               <RouteStop
                 label="DORUČENÍ"
                 address={current.deliveryAddress}
@@ -255,16 +442,53 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
   );
 }
 
-function RouteStop({ label, address, name, phone, color, onMap, onCall }: { label: string; address: string; name?: string; phone?: string; color: string; onMap: () => void; onCall: () => void }) {
+function RouteStop({
+  label,
+  address,
+  name,
+  phone,
+  notes,
+  color,
+  onMap,
+  onCall,
+  onMoveUp,
+  onMoveDown,
+  reorderDisabled,
+}: {
+  label: string;
+  address: string;
+  name?: string;
+  phone?: string;
+  notes?: string;
+  color: string;
+  onMap: () => void;
+  onCall: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  reorderDisabled?: boolean;
+}) {
   return (
     <Card>
       <View style={styles.stopHeader}>
-        <View style={[styles.stopDot, { backgroundColor: color }]} />
-        <Text style={[styles.cardLabel, { color }]}>{label}</Text>
+        <View style={styles.stopTitleWrap}>
+          <View style={[styles.stopDot, { backgroundColor: color }]} />
+          <Text style={[styles.cardLabel, { color }]}>{label}</Text>
+        </View>
+        {onMoveUp || onMoveDown ? (
+          <View style={styles.orderControls}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Posunout zastávku nahoru" disabled={!onMoveUp || reorderDisabled} onPress={onMoveUp} style={[styles.orderButton, (!onMoveUp || reorderDisabled) && styles.orderButtonDisabled]}>
+              <Ionicons name="arrow-up" size={17} color={colors.text} />
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Posunout zastávku dolů" disabled={!onMoveDown || reorderDisabled} onPress={onMoveDown} style={[styles.orderButton, (!onMoveDown || reorderDisabled) && styles.orderButtonDisabled]}>
+              <Ionicons name="arrow-down" size={17} color={colors.text} />
+            </Pressable>
+          </View>
+        ) : null}
       </View>
       <Text style={styles.address}>{address}</Text>
       {name ? <Text style={styles.contact}>{name}</Text> : null}
       {phone ? <Text style={styles.phone}>{phone}</Text> : null}
+      {notes ? <Text style={styles.stopNotes}>{notes}</Text> : null}
       <View style={styles.stopActions}>
         <AppButton title="Navigovat" icon="navigate-outline" variant="secondary" onPress={onMap} style={styles.flex} />
         {phone ? <AppButton title="Volat" icon="call-outline" variant="secondary" onPress={onCall} style={styles.flex} /> : null}
@@ -293,12 +517,22 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg },
   details: { gap: spacing.md },
   podForm: { gap: spacing.lg },
-  stopHeader: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm },
+  multiStopSummary: { gap: spacing.md, borderColor: "rgba(59,130,246,0.38)" },
+  multiStopSummaryCopy: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  multiStopIcon: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(59,130,246,0.12)" },
+  multiStopTitle: { color: colors.text, fontWeight: "900", fontSize: 14 },
+  multiStopSubtitle: { color: colors.textMuted, fontSize: 10, lineHeight: 15, marginTop: 3 },
+  stopHeader: { minHeight: 36, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, marginBottom: spacing.sm },
+  stopTitleWrap: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1 },
   stopDot: { width: 9, height: 9, borderRadius: 5 },
+  orderControls: { flexDirection: "row", gap: 6 },
+  orderButton: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border },
+  orderButtonDisabled: { opacity: 0.25 },
   cardLabel: { color: colors.textMuted, fontSize: 9, fontWeight: "800", letterSpacing: 1.2 },
   address: { color: colors.text, fontSize: 17, fontWeight: "800", lineHeight: 23 },
   contact: { color: colors.text, fontSize: 13, marginTop: spacing.sm },
   phone: { color: colors.primary, fontSize: 13, fontWeight: "700", marginTop: 3 },
+  stopNotes: { color: colors.warning, fontSize: 12, lineHeight: 18, marginTop: spacing.sm },
   stopActions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg },
   flex: { flex: 1 },
   infoGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
@@ -310,9 +544,20 @@ const styles = StyleSheet.create({
   codHelp: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
   codAmount: { color: colors.warning, fontWeight: "900", fontSize: 16 },
   bottomAction: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: colors.surface, borderTopColor: colors.border, borderTopWidth: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-  fieldLabel: { color: colors.text, fontWeight: "800", fontSize: 12, marginBottom: spacing.sm },
+  fieldTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.sm },
+  fieldLabel: { color: colors.text, fontWeight: "800", fontSize: 12 },
+  fieldCounter: { color: colors.textMuted, fontWeight: "800", fontSize: 11 },
   input: { minHeight: 52, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surfaceRaised, color: colors.text, paddingHorizontal: spacing.md, fontSize: 15 },
-  photo: { width: "100%", aspectRatio: 16 / 10, borderRadius: radius.md, marginBottom: spacing.sm, backgroundColor: colors.surfaceRaised },
+  photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginBottom: spacing.sm },
+  photoWrap: { width: "48.5%", aspectRatio: 16 / 10, borderRadius: radius.md, overflow: "hidden", backgroundColor: colors.surfaceRaised },
+  photo: { width: "100%", height: "100%" },
+  removePhoto: { position: "absolute", top: 6, right: 6, width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.72)" },
+  clearSignature: { color: colors.primary, fontSize: 11, fontWeight: "800" },
+  signaturePad: { height: 210, borderWidth: 2, borderColor: colors.border, borderRadius: radius.md, overflow: "hidden", backgroundColor: colors.white },
+  signatureCanvas: { flex: 1, width: "100%", height: 206 },
+  signatureHelp: { color: colors.textMuted, fontSize: 10, marginTop: 6 },
+  signatureReady: { color: colors.success, fontWeight: "800" },
+  signatureError: { color: "#FCA5A5", fontSize: 11, marginTop: 4 },
   codToggle: { flexDirection: "row", alignItems: "center", gap: spacing.md, padding: spacing.lg, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   codToggleActive: { borderColor: "rgba(34,197,94,0.55)" },
   codValue: { color: colors.success, fontWeight: "800", marginTop: 3 },

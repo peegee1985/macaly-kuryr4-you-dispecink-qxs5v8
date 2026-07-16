@@ -8,14 +8,28 @@ export type RideStatus =
   | "cancelled"
   | "failed";
 
+export type RideStop = {
+  address: string;
+  lat?: number;
+  lng?: number;
+  contactName: string;
+  contactPhone: string;
+  notes?: string;
+  order: number;
+};
+
 export type Ride = {
   _id: string;
   rideNumber: string;
   status: RideStatus;
   pickupAddress: string;
+  pickupLat?: number;
+  pickupLng?: number;
   pickupContactName?: string;
   pickupContactPhone?: string;
   deliveryAddress: string;
+  deliveryLat?: number;
+  deliveryLng?: number;
   deliveryContactName?: string;
   deliveryContactPhone?: string;
   requestedPickupAt: number;
@@ -31,6 +45,8 @@ export type Ride = {
   codEnabled?: boolean;
   codAmount?: number;
   codCollected?: boolean;
+  isMultiStop?: boolean;
+  stops?: RideStop[];
 };
 
 export type DriverUser = {
