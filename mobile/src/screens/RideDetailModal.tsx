@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
@@ -24,6 +25,7 @@ import { colors, radius, spacing } from "../theme";
 import type { Ride, RideStatus } from "../types";
 
 type PickedPhoto = { uri: string; mimeType?: string | null };
+type UploadedPOD = { photoIds: string[]; signatureId?: string; failedItems: string[] };
 
 const MAX_POD_PHOTOS = 4;
 const SIGNATURE_WEB_STYLE = `
@@ -150,60 +152,100 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
     }
   };
 
-  const uploadPhoto = async (picked: PickedPhoto) => {
+  const uploadFile = async (fileUri: string, mimeType: string) => {
     const uploadUrl = await generateUploadUrl();
-    const blob = await (await fetch(picked.uri)).blob();
-    const response = await fetch(uploadUrl, {
-      method: "POST",
-      headers: { "Content-Type": picked.mimeType || "image/jpeg" },
-      body: blob,
+    const response = await FileSystem.uploadAsync(uploadUrl, fileUri, {
+      httpMethod: "POST",
+      uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+      headers: { "Content-Type": mimeType },
     });
-    if (!response.ok) throw new Error("Fotografii se nepodařilo nahrát.");
-    const payload = (await response.json()) as { storageId: string };
+    if (response.status < 200 || response.status >= 300) {
+      throw new Error(`Soubor se nepodařilo nahrát (HTTP ${response.status}).`);
+    }
+    const payload = JSON.parse(response.body) as { storageId?: string };
+    if (!payload.storageId) throw new Error("Server nevrátil identifikátor souboru.");
     return payload.storageId;
   };
+
+  const uploadPhoto = async (picked: PickedPhoto) =>
+    uploadFile(picked.uri, picked.mimeType || "image/jpeg");
 
   const uploadSignature = async (dataUrl: string) => {
-    const uploadUrl = await generateUploadUrl();
-    const blob = await (await fetch(dataUrl)).blob();
-    const response = await fetch(uploadUrl, {
-      method: "POST",
-      headers: { "Content-Type": "image/png" },
-      body: blob,
+    const base64 = dataUrl.match(/^data:image\/png;base64,(.+)$/)?.[1];
+    if (!base64 || !FileSystem.cacheDirectory) throw new Error("Podpis nemá platný formát.");
+
+    const signatureUri = `${FileSystem.cacheDirectory}pod-signature-${current._id}-${Date.now()}.png`;
+    await FileSystem.writeAsStringAsync(signatureUri, base64, {
+      encoding: FileSystem.EncodingType.Base64,
     });
-    if (!response.ok) throw new Error("Podpis se nepodařilo nahrát.");
-    const payload = (await response.json()) as { storageId: string };
-    return payload.storageId;
+    try {
+      return await uploadFile(signatureUri, "image/png");
+    } finally {
+      await FileSystem.deleteAsync(signatureUri, { idempotent: true }).catch(() => undefined);
+    }
   };
 
-  const finishDelivery = async () => {
+  const uploadPOD = async (): Promise<UploadedPOD> => {
+    const photoResults = await Promise.allSettled(photos.map(uploadPhoto));
+    const photoIds = photoResults.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+    const failedItems: string[] = photoResults.some((result) => result.status === "rejected") ? ["fotografie"] : [];
+
+    let signatureId: string | undefined;
+    if (signature) {
+      try {
+        signatureId = await uploadSignature(signature);
+      } catch {
+        failedItems.push("podpis");
+      }
+    }
+
+    return { photoIds, signatureId, failedItems };
+  };
+
+  const confirmWithoutPOD = (message: string) => {
+    Alert.alert(
+      "Dokončit bez dokladu?",
+      `${message}\n\nDoručení bude uloženo bez fotografie a podpisu.`,
+      [
+        { text: "Zpět", style: "cancel" },
+        { text: "Dokončit bez POD", style: "destructive", onPress: () => void finishDelivery(true) },
+      ],
+    );
+  };
+
+  const finishDelivery = async (withoutPOD = false) => {
     if (!recipient.trim()) {
       Alert.alert("Chybí příjemce", "Zadejte jméno osoby, která zásilku převzala.");
       return;
     }
-    if (photos.length === 0) {
-      Alert.alert("Chybí fotografie", "Vyfoťte zásilku jako doklad o doručení.");
-      return;
-    }
-    if (!signature) {
-      Alert.alert("Chybí podpis", "Nechte příjemce podepsat převzetí zásilky.");
+    if (!withoutPOD && photos.length === 0 && !signature) {
+      confirmWithoutPOD("Nebyla pořízena fotografie ani podpis.");
       return;
     }
 
     setBusy(true);
     try {
-      const [signatureId, photoIds] = await Promise.all([
-        uploadSignature(signature),
-        Promise.all(photos.map(uploadPhoto)),
-      ]);
+      const uploaded = withoutPOD
+        ? { photoIds: [], signatureId: undefined, failedItems: [] }
+        : await uploadPOD();
+
+      if (!withoutPOD && uploaded.photoIds.length === 0 && !uploaded.signatureId) {
+        setBusy(false);
+        confirmWithoutPOD("Fotografii ani podpis se nepodařilo nahrát.");
+        return;
+      }
+
       await submitPOD({
         rideId: current._id,
-        photoIds,
-        signatureId,
+        photoIds: uploaded.photoIds,
+        signatureId: uploaded.signatureId,
         recipientName: recipient.trim(),
         codCollected: current.codEnabled ? codCollected : undefined,
       });
-      Alert.alert("Doručení potvrzeno", `Zakázka #${current.rideNumber} je dokončena.`, [
+      const warning = uploaded.failedItems.length
+        ? `\n\nNepodařilo se uložit: ${uploaded.failedItems.join(" a ")}. Ostatní doklad byl uložen.`
+        : withoutPOD ? "\n\nZakázka byla dokončena bez POD." : "";
+      Alert.alert("Doručení potvrzeno", `Zakázka #${current.rideNumber} je dokončena.${warning}`, [
         { text: "Hotovo", onPress: onClose },
       ]);
     } catch (cause) {
@@ -265,7 +307,7 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
               </View>
               <View>
                 <View style={styles.fieldTitleRow}>
-                  <Text style={styles.fieldLabel}>Fotografie doručené zásilky *</Text>
+                  <Text style={styles.fieldLabel}>Fotografie doručené zásilky (doporučeno)</Text>
                   <Text style={styles.fieldCounter}>{photos.length}/{MAX_POD_PHOTOS}</Text>
                 </View>
                 {photos.length ? (
@@ -296,7 +338,7 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
               </View>
               <View>
                 <View style={styles.fieldTitleRow}>
-                  <Text style={styles.fieldLabel}>Podpis příjemce *</Text>
+                  <Text style={styles.fieldLabel}>Podpis příjemce (doporučeno)</Text>
                   <Pressable accessibilityRole="button" accessibilityLabel="Vymazat podpis" onPress={clearSignature} hitSlop={8}>
                     <Text style={styles.clearSignature}>Vymazat</Text>
                   </Pressable>
@@ -347,6 +389,7 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
                   </View>
                 </Pressable>
               ) : null}
+              <Text style={styles.podFallbackHelp}>Stačí fotografie nebo podpis. Pokud technika selže, lze zakázku po potvrzení dokončit i bez POD.</Text>
               <AppButton title="Uzavřít jako doručené" icon="checkmark-done" loading={busy} onPress={() => void finishDelivery()} />
             </View>
           ) : (
@@ -558,6 +601,7 @@ const styles = StyleSheet.create({
   signatureHelp: { color: colors.textMuted, fontSize: 10, marginTop: 6 },
   signatureReady: { color: colors.success, fontWeight: "800" },
   signatureError: { color: "#FCA5A5", fontSize: 11, marginTop: 4 },
+  podFallbackHelp: { color: colors.textMuted, fontSize: 10, lineHeight: 16 },
   codToggle: { flexDirection: "row", alignItems: "center", gap: spacing.md, padding: spacing.lg, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   codToggleActive: { borderColor: "rgba(34,197,94,0.55)" },
   codValue: { color: colors.success, fontWeight: "800", marginTop: 3 },
