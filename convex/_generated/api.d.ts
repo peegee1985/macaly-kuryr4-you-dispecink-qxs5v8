@@ -27,6 +27,7 @@ import type * as hr from "../hr.js";
 import type * as http from "../http.js";
 import type * as invoices from "../invoices.js";
 import type * as notifications from "../notifications.js";
+import type * as presence from "../presence.js";
 import type * as pushNotifications from "../pushNotifications.js";
 import type * as pushNotificationsActions from "../pushNotificationsActions.js";
 import type * as receipts from "../receipts.js";
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   invoices: typeof invoices;
   notifications: typeof notifications;
+  presence: typeof presence;
   pushNotifications: typeof pushNotifications;
   pushNotificationsActions: typeof pushNotificationsActions;
   receipts: typeof receipts;

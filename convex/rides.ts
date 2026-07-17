@@ -1,8 +1,32 @@
 import { v } from "convex/values"
 import { mutation, query, internalMutation, internalQuery, action } from "./_generated/server"
+import type { MutationCtx } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import type { Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
+
+async function notifyActiveDispatchers(
+  ctx: MutationCtx,
+  title: string,
+  message: string,
+  rideId: Id<"rides">,
+) {
+  const dispatchers = await ctx.db
+    .query("users")
+    .withIndex("by_role", (q) => q.eq("role", "dispatcher"))
+    .filter((q) => q.eq(q.field("status"), "active"))
+    .collect()
+  for (const dispatcher of dispatchers) {
+    await ctx.db.insert("notifications", {
+      userId: dispatcher._id,
+      title,
+      message,
+      read: false,
+      type: "ride_status",
+      rideId,
+    })
+  }
+}
 
 // ─── Rating ────────────────────────────────────────────────────────────────
 
@@ -319,6 +343,14 @@ export const createRide = mutation({
     })
 
     console.log(`Ride created: ${rideId}`)
+
+    const createdRide = await ctx.db.get(rideId)
+    await notifyActiveDispatchers(
+      ctx,
+      `Nová zakázka ${createdRide?.rideNumber ?? rideId}`,
+      `${user.name ?? user.email}: ${args.pickupAddress} → ${args.deliveryAddress}`,
+      rideId,
+    )
 
     // Notify admin about new order
     const adminEmail = process.env.RECIPIENT_EMAIL
@@ -694,6 +726,15 @@ export const updateRideStatus = mutation({
       cancelled: "Zakázka zrušena",
     }
 
+    if (user.role === "driver") {
+      await notifyActiveDispatchers(
+        ctx,
+        `Řidič změnil stav ${ride.rideNumber}`,
+        `${user.name ?? user.email}: ${statusLabels[args.status] ?? args.status}`,
+        ride._id,
+      )
+    }
+
     const customer = await ctx.db.get(ride.customerId)
     await ctx.db.insert("notifications", {
       userId: ride.customerId,
@@ -908,6 +949,15 @@ export const submitPOD = mutation({
       rideId: ride._id,
     })
 
+    if (user.role === "driver") {
+      await notifyActiveDispatchers(
+        ctx,
+        `Zakázka ${ride.rideNumber} doručena`,
+        `${user.name ?? user.email} odeslal doklad o doručení.`,
+        ride._id,
+      )
+    }
+
     // Send delivery confirmation email with rating link
     const customer = await ctx.db.get(ride.customerId)
     if (customer?.email && ride.ratingToken) {
@@ -954,6 +1004,15 @@ export const submitFailedDelivery = mutation({
       type: "ride_status",
       rideId: ride._id,
     })
+
+    if (user.role === "driver") {
+      await notifyActiveDispatchers(
+        ctx,
+        `Zakázka ${ride.rideNumber} nebyla doručena`,
+        `${user.name ?? user.email}: ${args.failedReason}`,
+        ride._id,
+      )
+    }
 
     // Push notification to customer
     await ctx.scheduler.runAfter(0, internal.pushNotificationsActions.sendPushToUser, {

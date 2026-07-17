@@ -152,16 +152,16 @@ export function LoginScreen() {
   );
 }
 
-export function AccountStateScreen({ state, onSignOut }: { state: "pending" | "blocked" | "wrong-role"; onSignOut: () => void }) {
+export function AccountStateScreen({ state, onSignOut }: { state: "pending" | "inactive" | "wrong-role"; onSignOut: () => void }) {
   const copy = {
     pending: {
       icon: "time-outline" as const,
       title: "Účet čeká na schválení",
       message: "Dispečer musí nejdřív aktivovat váš řidičský účet.",
     },
-    blocked: {
+    inactive: {
       icon: "ban-outline" as const,
-      title: "Účet je zablokovaný",
+      title: "Účet není aktivní",
       message: "Pro obnovení přístupu kontaktujte dispečink Kuryr4You.",
     },
     "wrong-role": {

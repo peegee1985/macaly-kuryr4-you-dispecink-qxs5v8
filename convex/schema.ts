@@ -1,6 +1,6 @@
-import { defineSchema, defineTable } from "convex/server"
-import { v } from "convex/values"
-import { authTables } from "@convex-dev/auth/server"
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
   ...authTables,
@@ -9,10 +9,24 @@ export default defineSchema({
     email: v.string(),
     name: v.optional(v.string()),
     phone: v.optional(v.string()),
-    role: v.union(v.literal("dispatcher"), v.literal("driver"), v.literal("customer"), v.literal("vending_supervisor"), v.literal("service_driver")),
-    status: v.union(v.literal("active"), v.literal("pending"), v.literal("inactive")),
+    role: v.union(
+      v.literal("dispatcher"),
+      v.literal("driver"),
+      v.literal("customer"),
+      v.literal("vending_supervisor"),
+      v.literal("service_driver"),
+    ),
+    status: v.union(
+      v.literal("active"),
+      v.literal("pending"),
+      v.literal("inactive"),
+    ),
     // Corporate customer fields
-    corporateStatus: v.union(v.literal("none"), v.literal("pending"), v.literal("approved")),
+    corporateStatus: v.union(
+      v.literal("none"),
+      v.literal("pending"),
+      v.literal("approved"),
+    ),
     companyName: v.optional(v.string()),
     companyAddress: v.optional(v.string()),
     companyIco: v.optional(v.string()),
@@ -89,15 +103,19 @@ export default defineSchema({
     dispatcherNotes: v.optional(v.string()),
     // Multi-stop support
     isMultiStop: v.optional(v.boolean()),
-    stops: v.optional(v.array(v.object({
-      address: v.string(),
-      lat: v.optional(v.number()),
-      lng: v.optional(v.number()),
-      contactName: v.string(),
-      contactPhone: v.string(),
-      notes: v.optional(v.string()),
-      order: v.number(),
-    }))),
+    stops: v.optional(
+      v.array(
+        v.object({
+          address: v.string(),
+          lat: v.optional(v.number()),
+          lng: v.optional(v.number()),
+          contactName: v.string(),
+          contactPhone: v.string(),
+          notes: v.optional(v.string()),
+          order: v.number(),
+        }),
+      ),
+    ),
     // Template / copy tracking
     originalRideId: v.optional(v.id("rides")),
     // COD (Cash on Delivery / Dobírka)
@@ -216,8 +234,17 @@ export default defineSchema({
     isTracking: v.boolean(),
     updatedAt: v.number(),
     adminStopRequested: v.optional(v.boolean()),
+  }).index("by_driver", ["driverId"]),
+
+  driverPresence: defineTable({
+    driverId: v.id("users"),
+    isOnline: v.boolean(),
+    lastSeenAt: v.number(),
+    onlineSince: v.optional(v.number()),
+    offlineSince: v.optional(v.number()),
   })
-    .index("by_driver", ["driverId"]),
+    .index("by_driver", ["driverId"])
+    .index("by_online", ["isOnline"]),
 
   chatMessages: defineTable({
     senderId: v.id("users"),
@@ -261,8 +288,7 @@ export default defineSchema({
     filename: v.string(),
     uploadedAt: v.number(),
     description: v.optional(v.string()),
-  })
-    .index("by_customer", ["customerId"]),
+  }).index("by_customer", ["customerId"]),
 
   siteSettings: defineTable({
     key: v.string(), // singleton key, e.g. "receiptTemplate"
@@ -298,8 +324,7 @@ export default defineSchema({
     description: v.optional(v.string()),
     createdBy: v.id("users"),
     color: v.optional(v.string()), // for visual distinction
-  })
-    .index("by_name", ["name"]),
+  }).index("by_name", ["name"]),
 
   teamMembers: defineTable({
     teamId: v.id("teams"),
@@ -344,8 +369,11 @@ export default defineSchema({
     deliveryContactPhone: v.string(),
     requestedDeliveryAt: v.number(),
     cargoType: v.union(
-      v.literal("envelope"), v.literal("parcel"), v.literal("box"),
-      v.literal("pallet"), v.literal("other"),
+      v.literal("envelope"),
+      v.literal("parcel"),
+      v.literal("box"),
+      v.literal("pallet"),
+      v.literal("other"),
     ),
     cargoDescription: v.string(),
     weight: v.optional(v.number()),
@@ -415,7 +443,11 @@ export default defineSchema({
     ico: v.optional(v.string()),
     dic: v.optional(v.string()),
     tags: v.array(v.string()),
-    status: v.union(v.literal("active"), v.literal("inactive"), v.literal("lead")),
+    status: v.union(
+      v.literal("active"),
+      v.literal("inactive"),
+      v.literal("lead"),
+    ),
     linkedUserId: v.optional(v.id("users")),
     assignedTo: v.optional(v.id("users")),
     notes: v.optional(v.string()),
@@ -428,7 +460,12 @@ export default defineSchema({
     contactId: v.id("crmContacts"),
     authorId: v.id("users"),
     text: v.string(),
-    type: v.union(v.literal("note"), v.literal("call"), v.literal("email"), v.literal("meeting")),
+    type: v.union(
+      v.literal("note"),
+      v.literal("call"),
+      v.literal("email"),
+      v.literal("meeting"),
+    ),
   }).index("by_contact", ["contactId"]),
 
   crmActivities: defineTable({
@@ -451,9 +488,22 @@ export default defineSchema({
     hireDate: v.optional(v.number()),
     birthDate: v.optional(v.number()),
     address: v.optional(v.string()),
-    contractType: v.union(v.literal("hpp"), v.literal("dpp"), v.literal("dpc"), v.literal("osvc")),
-    status: v.union(v.literal("active"), v.literal("inactive"), v.literal("trial")),
-    salaryType: v.union(v.literal("monthly"), v.literal("hourly"), v.literal("per_delivery")),
+    contractType: v.union(
+      v.literal("hpp"),
+      v.literal("dpp"),
+      v.literal("dpc"),
+      v.literal("osvc"),
+    ),
+    status: v.union(
+      v.literal("active"),
+      v.literal("inactive"),
+      v.literal("trial"),
+    ),
+    salaryType: v.union(
+      v.literal("monthly"),
+      v.literal("hourly"),
+      v.literal("per_delivery"),
+    ),
     salaryAmount: v.optional(v.number()),
     bankAccount: v.optional(v.string()),
     personalId: v.optional(v.string()),
@@ -470,7 +520,12 @@ export default defineSchema({
     clockOut: v.optional(v.number()),
     plannedStart: v.optional(v.string()),
     plannedEnd: v.optional(v.string()),
-    type: v.union(v.literal("regular"), v.literal("overtime"), v.literal("night"), v.literal("holiday")),
+    type: v.union(
+      v.literal("regular"),
+      v.literal("overtime"),
+      v.literal("night"),
+      v.literal("holiday"),
+    ),
     hoursWorked: v.optional(v.number()),
     notes: v.optional(v.string()),
     approvedBy: v.optional(v.id("users")),
@@ -481,11 +536,20 @@ export default defineSchema({
 
   leaveRequests: defineTable({
     employeeId: v.id("employees"),
-    type: v.union(v.literal("vacation"), v.literal("sick"), v.literal("unpaid"), v.literal("other")),
+    type: v.union(
+      v.literal("vacation"),
+      v.literal("sick"),
+      v.literal("unpaid"),
+      v.literal("other"),
+    ),
     startDate: v.string(),
     endDate: v.string(),
     days: v.number(),
-    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+    ),
     notes: v.optional(v.string()),
     approvedBy: v.optional(v.id("users")),
     approvedAt: v.optional(v.number()),
@@ -513,13 +577,13 @@ export default defineSchema({
     socialInsurance: v.number(),
     healthInsurance: v.number(),
     // Tax calculation fields (Czech 2025)
-    taxBase: v.optional(v.number()),           // základ daně
-    taxCredit: v.optional(v.number()),          // sleva na poplatníka (default 2570)
-    taxBonus: v.optional(v.number()),           // daňový bonus
+    taxBase: v.optional(v.number()), // základ daně
+    taxCredit: v.optional(v.number()), // sleva na poplatníka (default 2570)
+    taxBonus: v.optional(v.number()), // daňový bonus
     taxAdvance: v.number(),
     // Employer contributions (informative, not deducted from employee)
-    employerSocialIns: v.optional(v.number()),  // SZ zaměstnavatel 24,8 %
-    employerHealthIns: v.optional(v.number()),  // ZP zaměstnavatel 9 %
+    employerSocialIns: v.optional(v.number()), // SZ zaměstnavatel 24,8 %
+    employerHealthIns: v.optional(v.number()), // ZP zaměstnavatel 9 %
     otherDeductions: v.optional(v.number()),
     otherDeductionsNote: v.optional(v.string()),
     bonuses: v.optional(v.number()),
@@ -528,7 +592,11 @@ export default defineSchema({
     vacationDaysTotal: v.optional(v.number()),
     vacationDaysTaken: v.optional(v.number()),
     pdfStorageId: v.optional(v.id("_storage")),
-    status: v.union(v.literal("draft"), v.literal("finalized"), v.literal("sent")),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("finalized"),
+      v.literal("sent"),
+    ),
     notes: v.optional(v.string()),
     createdBy: v.id("users"),
   })
@@ -541,7 +609,11 @@ export default defineSchema({
   recurringRides: defineTable({
     customerId: v.id("users"),
     title: v.string(),
-    frequency: v.union(v.literal("daily"), v.literal("weekly"), v.literal("custom")),
+    frequency: v.union(
+      v.literal("daily"),
+      v.literal("weekly"),
+      v.literal("custom"),
+    ),
     weekDays: v.optional(v.array(v.number())),
     customIntervalDays: v.optional(v.number()),
     nextOccurrenceAt: v.number(),
@@ -554,8 +626,11 @@ export default defineSchema({
       deliveryContactName: v.string(),
       deliveryContactPhone: v.string(),
       cargoType: v.union(
-        v.literal("envelope"), v.literal("parcel"), v.literal("box"),
-        v.literal("pallet"), v.literal("other"),
+        v.literal("envelope"),
+        v.literal("parcel"),
+        v.literal("box"),
+        v.literal("pallet"),
+        v.literal("other"),
       ),
       cargoDescription: v.string(),
       weight: v.optional(v.number()),
@@ -657,14 +732,14 @@ export default defineSchema({
     driverId: v.optional(v.id("users")),
     checklistTemplateId: v.optional(v.id("visitChecklistTemplates")),
     status: v.union(
-      v.literal("scheduled"),    // Naplánováno
-      v.literal("assigned"),     // Přiřazeno řidiči
-      v.literal("accepted"),     // Řidič přijal
-      v.literal("en_route"),     // Na cestě
-      v.literal("in_progress"),  // Probíhá
-      v.literal("completed"),    // Dokončeno
-      v.literal("cancelled"),    // Zrušeno
-      v.literal("incident"),     // Incident
+      v.literal("scheduled"), // Naplánováno
+      v.literal("assigned"), // Přiřazeno řidiči
+      v.literal("accepted"), // Řidič přijal
+      v.literal("en_route"), // Na cestě
+      v.literal("in_progress"), // Probíhá
+      v.literal("completed"), // Dokončeno
+      v.literal("cancelled"), // Zrušeno
+      v.literal("incident"), // Incident
     ),
     scheduledAt: v.number(),
     estimatedDuration: v.optional(v.number()), // minuty
@@ -703,11 +778,7 @@ export default defineSchema({
     order: v.number(),
     text: v.string(),
     required: v.boolean(),
-    type: v.union(
-      v.literal("checkbox"),
-      v.literal("text"),
-      v.literal("photo"),
-    ),
+    type: v.union(v.literal("checkbox"), v.literal("text"), v.literal("photo")),
     hint: v.optional(v.string()),
   }).index("by_template", ["templateId"]),
 
@@ -715,13 +786,15 @@ export default defineSchema({
   visitChecklists: defineTable({
     visitId: v.id("serviceVisits"),
     templateId: v.id("visitChecklistTemplates"),
-    items: v.array(v.object({
-      itemId: v.id("visitChecklistItems"),
-      text: v.string(),
-      completed: v.boolean(),
-      textValue: v.optional(v.string()),
-      photoStorageId: v.optional(v.id("_storage")),
-    })),
+    items: v.array(
+      v.object({
+        itemId: v.id("visitChecklistItems"),
+        text: v.string(),
+        completed: v.boolean(),
+        textValue: v.optional(v.string()),
+        photoStorageId: v.optional(v.id("_storage")),
+      }),
+    ),
     completedAt: v.optional(v.number()),
   }).index("by_visit", ["visitId"]),
 
@@ -766,7 +839,11 @@ export default defineSchema({
     ),
     severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
     description: v.string(),
-    status: v.union(v.literal("open"), v.literal("in_progress"), v.literal("resolved")),
+    status: v.union(
+      v.literal("open"),
+      v.literal("in_progress"),
+      v.literal("resolved"),
+    ),
     photoStorageIds: v.array(v.id("_storage")),
     resolvedAt: v.optional(v.number()),
     resolvedBy: v.optional(v.id("users")),
@@ -799,4 +876,4 @@ export default defineSchema({
   })
     .index("by_entity", ["entityType", "entityId"])
     .index("by_user", ["userId"]),
-})
+});
