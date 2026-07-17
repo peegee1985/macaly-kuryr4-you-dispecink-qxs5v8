@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
-import { EmptyState, LoadingView, PageHeader, Screen } from "../components/ui";
+import { LoadingView, PageHeader, Screen } from "../components/ui";
 import { useOptionalDriverPresence } from "../hooks/useOptionalDriverPresence";
 import { api } from "../lib/api";
 import { formatDateTime, rideStatusLabel } from "../lib/format";
@@ -31,6 +31,7 @@ type MapDriver = {
   gpsActive: boolean;
   loggedIn: boolean;
   speedKmh?: number;
+  updatedLabel: string;
   ride?: string;
 };
 
@@ -42,20 +43,39 @@ type MapRidePoint = {
   kind: "pickup" | "delivery";
   label: string;
   address: string;
+  scheduledLabel: string;
   lat: number;
   lng: number;
 };
 
 function hasCoordinates(lat?: number, lng?: number): lat is number {
-  return Number.isFinite(lat) && Number.isFinite(lng);
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat! >= -90 &&
+    lat! <= 90 &&
+    lng! >= -180 &&
+    lng! <= 180
+  );
 }
 
 function hasFreshGps(item: DriverLocation, now: number) {
-  return item.isTracking && now - item.updatedAt <= GPS_FRESH_MS;
+  return (
+    item.isTracking &&
+    Number.isFinite(item.updatedAt) &&
+    now - item.updatedAt >= 0 &&
+    now - item.updatedAt <= GPS_FRESH_MS
+  );
 }
 
-function currentSpeedKmh(item: DriverLocation, gpsActive: boolean) {
-  if (!gpsActive || item.speed === undefined || item.speed < 0) return undefined;
+function currentSpeedKmh(item: DriverLocation) {
+  if (
+    item.speed === undefined ||
+    !Number.isFinite(item.speed) ||
+    item.speed < 0
+  ) {
+    return undefined;
+  }
   return Math.round(item.speed * 3.6);
 }
 
@@ -65,30 +85,32 @@ export function MapScreen({
   onOpenRide: (ride: Ride) => void;
 }) {
   const mapRef = useRef<WebView>(null);
-  const locations = useQuery(
-    api.gps.getAllDriverLocations,
-    {},
-  ) as DriverLocation[] | undefined;
+  const locations = useQuery(api.gps.getAllDriverLocations, {}) as
+    | DriverLocation[]
+    | undefined;
   const rides = useQuery(api.rides.getAllRides, {}) as Ride[] | undefined;
   const presence = useOptionalDriverPresence();
   const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const presenceByDriver = useMemo(
     () => new Map(presence.map((item) => [item.driverId, item])),
     [presence],
   );
-  const visibleLocations = useMemo(() => {
-    const now = Date.now();
-    return (locations ?? []).filter((item) => {
-      if (!hasCoordinates(item.lat, item.lng)) return false;
-      return (
-        hasFreshGps(item, now) ||
-        presenceByDriver.get(item.driverId)?.isOnline === true
-      );
-    });
-  }, [locations, presenceByDriver]);
+  const knownLocations = useMemo(
+    () =>
+      (locations ?? [])
+        .filter((item) => hasCoordinates(item.lat, item.lng))
+        .sort((left, right) => right.updatedAt - left.updatedAt),
+    [locations],
+  );
   const activeByDriver = useMemo(() => {
     const map = new Map<string, Ride>();
     rides
@@ -102,17 +124,20 @@ export function MapScreen({
   }, [rides]);
   const openRides = useMemo(
     () =>
-      (rides ?? []).filter(
-        (ride) =>
-          !CLOSED_RIDE_STATUSES.has(ride.status) &&
-          (hasCoordinates(ride.pickupLat, ride.pickupLng) ||
-            hasCoordinates(ride.deliveryLat, ride.deliveryLng)),
-      ),
+      (rides ?? [])
+        .filter(
+          (ride) =>
+            !CLOSED_RIDE_STATUSES.has(ride.status) &&
+            (hasCoordinates(ride.pickupLat, ride.pickupLng) ||
+              hasCoordinates(ride.deliveryLat, ride.deliveryLng)),
+        )
+        .sort(
+          (left, right) => left.requestedPickupAt - right.requestedPickupAt,
+        ),
     [rides],
   );
   const mapDrivers = useMemo<MapDriver[]>(() => {
-    const now = Date.now();
-    return visibleLocations.map((item) => {
+    return knownLocations.map((item) => {
       const activeRide = activeByDriver.get(item.driverId);
       const gpsActive = hasFreshGps(item, now);
       return {
@@ -123,13 +148,14 @@ export function MapScreen({
         lng: item.lng,
         gpsActive,
         loggedIn: presenceByDriver.get(item.driverId)?.isOnline === true,
-        speedKmh: currentSpeedKmh(item, gpsActive),
+        speedKmh: currentSpeedKmh(item),
+        updatedLabel: formatDateTime(item.updatedAt),
         ride: activeRide
           ? `#${activeRide.rideNumber} · ${rideStatusLabel[activeRide.status]}`
           : undefined,
       };
     });
-  }, [activeByDriver, presenceByDriver, visibleLocations]);
+  }, [activeByDriver, knownLocations, now, presenceByDriver]);
   const mapRidePoints = useMemo<MapRidePoint[]>(
     () =>
       openRides.flatMap((ride) => {
@@ -143,6 +169,7 @@ export function MapScreen({
             kind: "pickup",
             label: "Vyzvednutí",
             address: ride.pickupAddress,
+            scheduledLabel: formatDateTime(ride.requestedPickupAt),
             lat: ride.pickupLat,
             lng: ride.pickupLng!,
           });
@@ -156,6 +183,7 @@ export function MapScreen({
             kind: "delivery",
             label: "Doručení",
             address: ride.deliveryAddress,
+            scheduledLabel: formatDateTime(ride.requestedDeliveryAt),
             lat: ride.deliveryLat,
             lng: ride.deliveryLng!,
           });
@@ -207,7 +235,7 @@ export function MapScreen({
     <Screen scroll={false} contentStyle={styles.screen}>
       <PageHeader
         title="Živá mapa"
-        subtitle={`${mapDrivers.length} dostupných řidičů · ${openRides.length} nevyřízených zakázek`}
+        subtitle={`${mapDrivers.length} posledních poloh · ${openRides.length} plánovaných a aktivních zakázek`}
         action={
           hasMapItems ? (
             <Pressable
@@ -221,162 +249,169 @@ export function MapScreen({
           ) : null
         }
       />
-      {!hasMapItems ? (
-        <EmptyState
-          icon="location-outline"
-          title="Na mapě teď nic není"
-          message="Zobrazí se přihlášení řidiči, aktivní GPS a nevyřízené zakázky s uloženými souřadnicemi."
+      <View style={styles.mapWrap}>
+        <WebView
+          ref={mapRef}
+          source={{ html: leafletHtml, baseUrl: "https://kuryr4you.cz" }}
+          style={styles.map}
+          originWhitelist={["*"]}
+          javaScriptEnabled
+          domStorageEnabled
+          allowFileAccess={false}
+          setSupportMultipleWindows={false}
+          onMessage={onMapMessage}
+          onError={() => setMapError(true)}
+          onHttpError={() => setMapError(true)}
+          accessibilityLabel="Leaflet mapa řidičů a nevyřízených zakázek"
         />
-      ) : (
-        <>
-          <View style={styles.mapWrap}>
-            <WebView
-              ref={mapRef}
-              source={{ html: leafletHtml, baseUrl: "https://kuryr4you.cz" }}
-              style={styles.map}
-              originWhitelist={["*"]}
-              javaScriptEnabled
-              domStorageEnabled
-              allowFileAccess={false}
-              setSupportMultipleWindows={false}
-              onMessage={onMapMessage}
-              onError={() => setMapError(true)}
-              onHttpError={() => setMapError(true)}
-              accessibilityLabel="Leaflet mapa řidičů a nevyřízených zakázek"
+        {mapError ? (
+          <View style={styles.mapError}>
+            <Ionicons
+              name="cloud-offline-outline"
+              size={28}
+              color={colors.warning}
             />
-            {mapError ? (
-              <View style={styles.mapError}>
-                <Ionicons
-                  name="cloud-offline-outline"
-                  size={28}
-                  color={colors.warning}
-                />
-                <Text style={styles.mapErrorTitle}>
-                  Mapové podklady se nenačetly
-                </Text>
-                <Text style={styles.mapErrorText}>
-                  Zkontrolujte internet. Seznam řidičů a otevření polohy v
-                  navigaci zůstávají funkční.
-                </Text>
-              </View>
-            ) : null}
-            <View pointerEvents="none" style={styles.legend}>
-              <View
-                style={[styles.legendDot, { backgroundColor: colors.info }]}
-              />
-              <Text style={styles.legendText}>Řidič</Text>
-              <View
-                style={[styles.legendDot, { backgroundColor: colors.primary }]}
-              />
-              <Text style={styles.legendText}>Vyzvednutí</Text>
-              <View
-                style={[styles.legendDot, { backgroundColor: colors.success }]}
-              />
-              <Text style={styles.legendText}>Doručení</Text>
-            </View>
+            <Text style={styles.mapErrorTitle}>
+              Mapové podklady se nenačetly
+            </Text>
+            <Text style={styles.mapErrorText}>
+              Zkontrolujte internet. Seznam řidičů a otevření polohy v navigaci
+              zůstávají funkční.
+            </Text>
           </View>
-          {visibleLocations.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.driverList}
-              style={styles.driverScroll}
-            >
-              {visibleLocations.map((item) => {
-                const activeRide = activeByDriver.get(item.driverId);
-                const selected = selectedDriver === item.driverId;
-                const gpsActive = hasFreshGps(item, Date.now());
-                const speed = currentSpeedKmh(item, gpsActive);
-                const loggedIn =
-                  presenceByDriver.get(item.driverId)?.isOnline === true;
-                return (
-                  <Pressable
-                    key={item._id}
-                    accessibilityRole="button"
-                    onPress={() => focusDriver(item)}
+        ) : null}
+        {!hasMapItems && !mapError ? (
+          <View pointerEvents="none" style={styles.emptyMapHint}>
+            <Ionicons
+              name="location-outline"
+              size={21}
+              color={colors.textMuted}
+            />
+            <Text style={styles.emptyMapHintText}>
+              Zatím nejsou uložené žádné souřadnice. Mapa zůstává připravená a
+              body se doplní automaticky.
+            </Text>
+          </View>
+        ) : null}
+        <View pointerEvents="none" style={styles.legend}>
+          <View
+            style={[styles.legendDot, { backgroundColor: colors.success }]}
+          />
+          <Text style={styles.legendText}>GPS online</Text>
+          <View style={[styles.legendDot, { backgroundColor: colors.info }]} />
+          <Text style={styles.legendText}>Poslední poloha</Text>
+          <View
+            style={[styles.legendDot, { backgroundColor: colors.primary }]}
+          />
+          <Text style={styles.legendText}>Vyzvednutí</Text>
+          <View
+            style={[styles.legendDot, { backgroundColor: colors.success }]}
+          />
+          <Text style={styles.legendText}>Doručení</Text>
+        </View>
+      </View>
+      {knownLocations.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.driverList}
+          style={styles.driverScroll}
+        >
+          {knownLocations.map((item) => {
+            const activeRide = activeByDriver.get(item.driverId);
+            const selected = selectedDriver === item.driverId;
+            const gpsActive = hasFreshGps(item, now);
+            const speed = currentSpeedKmh(item);
+            const loggedIn =
+              presenceByDriver.get(item.driverId)?.isOnline === true;
+            return (
+              <Pressable
+                key={item._id}
+                accessibilityRole="button"
+                onPress={() => focusDriver(item)}
+                style={[
+                  styles.driverCard,
+                  selected && styles.driverCardSelected,
+                ]}
+              >
+                <View style={styles.driverTop}>
+                  <View
                     style={[
-                      styles.driverCard,
-                      selected && styles.driverCardSelected,
+                      styles.onlineDot,
+                      {
+                        backgroundColor: gpsActive
+                          ? colors.success
+                          : colors.info,
+                      },
+                    ]}
+                  />
+                  <Text style={styles.driverName} numberOfLines={1}>
+                    {item.driverName ?? "Neznámý řidič"}
+                  </Text>
+                </View>
+                <Text style={styles.vehicle}>
+                  {item.vehiclePlate ?? "Vozidlo bez SPZ"} ·{" "}
+                  {gpsActive
+                    ? "GPS zapnuto"
+                    : loggedIn
+                      ? "Přihlášen"
+                      : "Poslední známá poloha"}
+                </Text>
+                <View style={styles.speedRow}>
+                  <Ionicons
+                    name="speedometer-outline"
+                    size={16}
+                    color={speed === undefined ? colors.textMuted : colors.info}
+                  />
+                  <Text
+                    style={[
+                      styles.speed,
+                      speed === undefined && styles.speedUnknown,
                     ]}
                   >
-                    <View style={styles.driverTop}>
-                      <View
-                        style={[
-                          styles.onlineDot,
-                          {
-                            backgroundColor: gpsActive
-                              ? colors.success
-                              : colors.info,
-                          },
-                        ]}
-                      />
-                      <Text style={styles.driverName} numberOfLines={1}>
-                        {item.driverName ?? "Neznámý řidič"}
-                      </Text>
-                    </View>
-                    <Text style={styles.vehicle}>
-                      {item.vehiclePlate ?? "Vozidlo bez SPZ"} ·{" "}
-                      {gpsActive
-                        ? "GPS zapnuto"
-                        : loggedIn
-                          ? "Přihlášen"
-                          : "Poloha aktivní"}
+                    {speed === undefined
+                      ? "Rychlost není dostupná"
+                      : `${gpsActive ? "Aktuálně" : "Naposledy"} ${speed} km/h`}
+                  </Text>
+                </View>
+                {activeRide ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => onOpenRide(activeRide)}
+                  >
+                    <Text style={styles.activeRide}>
+                      #{activeRide.rideNumber} ·{" "}
+                      {rideStatusLabel[activeRide.status]}
                     </Text>
-                    <View style={styles.speedRow}>
-                      <Ionicons
-                        name="speedometer-outline"
-                        size={16}
-                        color={speed === undefined ? colors.textMuted : colors.info}
-                      />
-                      <Text
-                        style={[
-                          styles.speed,
-                          speed === undefined && styles.speedUnknown,
-                        ]}
-                      >
-                        {speed === undefined ? "Rychlost není dostupná" : `${speed} km/h`}
-                      </Text>
-                    </View>
-                    {activeRide ? (
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={() => onOpenRide(activeRide)}
-                      >
-                        <Text style={styles.activeRide}>
-                          #{activeRide.rideNumber} ·{" "}
-                          {rideStatusLabel[activeRide.status]}
-                        </Text>
-                      </Pressable>
-                    ) : (
-                      <Text style={styles.noRide}>Bez aktivní zakázky</Text>
-                    )}
-                    <View style={styles.driverBottom}>
-                      <Text style={styles.updated}>
-                        {formatDateTime(item.updatedAt)}
-                      </Text>
-                      <Pressable
-                        accessibilityRole="link"
-                        accessibilityLabel="Otevřít polohu v Mapách"
-                        onPress={() =>
-                          void Linking.openURL(
-                            `${Platform.OS === "ios" ? "maps" : "geo"}:0,0?q=${item.lat},${item.lng}`,
-                          )
-                        }
-                      >
-                        <Ionicons
-                          name="navigate-circle-outline"
-                          size={22}
-                          color={colors.primary}
-                        />
-                      </Pressable>
-                    </View>
                   </Pressable>
-                );
-              })}
-            </ScrollView>
-          ) : null}
-        </>
-      )}
+                ) : (
+                  <Text style={styles.noRide}>Bez aktivní zakázky</Text>
+                )}
+                <View style={styles.driverBottom}>
+                  <Text style={styles.updated}>
+                    {formatDateTime(item.updatedAt)}
+                  </Text>
+                  <Pressable
+                    accessibilityRole="link"
+                    accessibilityLabel="Otevřít polohu v Mapách"
+                    onPress={() =>
+                      void Linking.openURL(
+                        `${Platform.OS === "ios" ? "maps" : "geo"}:0,0?q=${item.lat},${item.lng}`,
+                      )
+                    }
+                  >
+                    <Ionicons
+                      name="navigate-circle-outline"
+                      size={22}
+                      color={colors.primary}
+                    />
+                  </Pressable>
+                </View>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      ) : null}
     </Screen>
   );
 }
@@ -410,8 +445,8 @@ const leafletHtml = `<!doctype html>
       function esc(value){return String(value===undefined||value===null?'':value).replace(/[&<>"']/g,function(char){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]})}
       function driverIcon(item){return L.divIcon({className:'',html:'<div class="driver-marker '+(item.gpsActive?'gps':'')+'">&#128663;</div>',iconSize:[36,36],iconAnchor:[18,18],popupAnchor:[0,-19]})}
       function rideIcon(item){return L.divIcon({className:'',html:'<div class="ride-marker '+item.kind+'">'+(item.kind==='pickup'?'&#128230;':'&#9873;')+'</div>',iconSize:[36,36],iconAnchor:[18,18],popupAnchor:[0,-19]})}
-      function driverPopup(item){var speed=item.speedKmh===undefined?'Rychlost není dostupná':esc(item.speedKmh)+' km/h';var state=item.gpsActive?'GPS zapnuto':'Přihlášen · poslední známá poloha';return '<div class="popup-name">'+esc(item.name)+'</div><div class="popup-meta">'+esc(item.plate)+' · '+state+'</div><div class="popup-speed">'+speed+'</div>'+(item.ride?'<div class="popup-ride">'+esc(item.ride)+'</div>':'<div class="popup-meta">Bez aktivní zakázky</div>')}
-      function ridePopup(item){return '<div class="popup-name">#'+esc(item.number)+' · '+esc(item.label)+'</div><div class="popup-meta">'+esc(item.status)+'</div><div class="popup-ride">'+esc(item.address)+'</div>'}
+      function driverPopup(item){var speed=item.speedKmh===undefined?'Rychlost není dostupná':(item.gpsActive?'Aktuálně ':'Naposledy ')+esc(item.speedKmh)+' km/h';var state=item.gpsActive?'GPS online':item.loggedIn?'Přihlášen · poslední známá poloha':'Offline · poslední známá poloha';return '<div class="popup-name">'+esc(item.name)+'</div><div class="popup-meta">'+esc(item.plate)+' · '+state+'</div><div class="popup-speed">'+speed+'</div><div class="popup-meta">Aktualizováno '+esc(item.updatedLabel)+'</div>'+(item.ride?'<div class="popup-ride">'+esc(item.ride)+'</div>':'<div class="popup-meta">Bez aktivní zakázky</div>')}
+      function ridePopup(item){return '<div class="popup-name">#'+esc(item.number)+' · '+esc(item.label)+'</div><div class="popup-meta">'+esc(item.status)+' · '+esc(item.scheduledLabel)+'</div><div class="popup-ride">'+esc(item.address)+'</div>'}
       window.updateMapData=function(nextDrivers,nextRidePoints){
         drivers=nextDrivers||[];ridePoints=nextRidePoints||[];var seenDrivers={};var seenRides={};
         drivers.forEach(function(item){
@@ -478,6 +513,26 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     textAlign: "center",
     marginTop: spacing.sm,
+  },
+  emptyMapHint: {
+    position: "absolute",
+    left: spacing.md,
+    right: spacing.md,
+    bottom: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: "rgba(23,26,36,0.94)",
+    padding: spacing.md,
+  },
+  emptyMapHintText: {
+    flex: 1,
+    color: colors.textMuted,
+    fontSize: 10,
+    lineHeight: 15,
   },
   legend: {
     position: "absolute",

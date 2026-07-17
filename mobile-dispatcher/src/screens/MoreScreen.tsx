@@ -24,6 +24,7 @@ import {
 } from "../components/ui";
 import { useOptionalDriverPresence } from "../hooks/useOptionalDriverPresence";
 import { api } from "../lib/api";
+import { DISPATCHER_APP_VERSION } from "../lib/appVersion";
 import { formatDate, formatDateTime, formatMoney } from "../lib/format";
 import { colors, radius, spacing } from "../theme";
 import type {
@@ -210,7 +211,9 @@ export function MoreScreen({
           </Pressable>
         ))}
       </View>
-      <Text style={styles.version}>Kuryr4You Dispečink · Android 0.1.0</Text>
+      <Text style={styles.version}>
+        Kuryr4You Dispečink · Android {DISPATCHER_APP_VERSION}
+      </Text>
     </Screen>
   );
 }
@@ -484,7 +487,10 @@ function UserEditor({
       return;
     }
     if (newPassword !== passwordAgain) {
-      Alert.alert("Hesla se neshodují", "Zadejte nové heslo v obou polích stejně.");
+      Alert.alert(
+        "Hesla se neshodují",
+        "Zadejte nové heslo v obou polích stejně.",
+      );
       return;
     }
     setResetting(true);

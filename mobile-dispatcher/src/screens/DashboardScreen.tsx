@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import type { ComponentProps } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { AppUpdateCard } from "../components/AppUpdateCard";
 import { Card, IconButton, LoadingView, PageHeader, Screen, SectionTitle, StatusPill } from "../components/ui";
 import { formatDateTime, formatMoney } from "../lib/format";
 import { api } from "../lib/api";
@@ -50,6 +51,8 @@ export function DashboardScreen({
         subtitle={new Intl.DateTimeFormat("cs-CZ", { weekday: "long", day: "numeric", month: "long" }).format(new Date())}
         action={<IconButton icon="notifications-outline" badge={unreadNotifications} label="Oznámení" onPress={onOpenNotifications} />}
       />
+
+      <AppUpdateCard />
 
       {pending.length > 0 ? (
         <Pressable accessibilityRole="button" onPress={onOpenRides} style={styles.alert}>
