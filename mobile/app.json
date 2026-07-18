@@ -3,7 +3,7 @@
     "name": "Kuryr4You Řidič",
     "slug": "kuryr4you-ridic",
     "scheme": "kuryr4you",
-    "version": "0.5.0",
+    "version": "0.5.1",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0F111A",
