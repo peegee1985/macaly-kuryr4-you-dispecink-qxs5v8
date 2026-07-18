@@ -24,9 +24,14 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
   const pod = useQuery(api.rides.getPODData, ride?.status === "delivered" ? { rideId: ride._id } : "skip") as PodData | null | undefined;
   if (!ride) return null;
 
-  const openDriverLocation = () => {
-    if (tracking?.driverLat === undefined || tracking.driverLng === undefined) return;
-    void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${tracking.driverLat},${tracking.driverLng}`);
+  // Živé sledování vede na webovou mapu (Leaflet) — stejná stránka,
+  // kterou dostává příjemce v SMS.
+  const openTracking = () => {
+    void Linking.openURL(`https://www.kuryr4you.cz/sledovani/${ride.trackingToken}`);
+  };
+
+  const openPayment = () => {
+    if (ride.stripePaymentUrl) void Linking.openURL(ride.stripePaymentUrl);
   };
 
   return (
@@ -66,8 +71,12 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
               </View>
             </Card>
           ) : null}
-          {tracking?.driverLat !== undefined && tracking.driverLng !== undefined ? (
-            <AppButton title="Zobrazit aktuální polohu řidiče" icon="map-outline" variant="secondary" onPress={openDriverLocation} style={styles.locationButton} />
+          {["assigned", "pickup", "transit"].includes(ride.status) ? (
+            <AppButton title="Sledovat zásilku na mapě" icon="map-outline" variant="secondary" onPress={openTracking} style={styles.locationButton} />
+          ) : null}
+
+          {!ride.isPaid && ride.stripePaymentUrl ? (
+            <AppButton title="Zaplatit online" icon="card-outline" onPress={openPayment} style={styles.locationButton} />
           ) : null}
 
           <Card style={styles.detailsCard}>

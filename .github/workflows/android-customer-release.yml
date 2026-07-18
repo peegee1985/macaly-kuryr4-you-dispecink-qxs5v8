@@ -4,13 +4,14 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - agent/android-customer-app
+      - main
+      - claude/github-access-m6bup7
     paths:
       - "mobile-customer/**"
       - ".github/workflows/android-customer-release.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: android-customer-release
@@ -18,7 +19,7 @@ concurrency:
 
 jobs:
   release-apk:
-    name: Build unsigned customer APK
+    name: Build and publish signed customer APK
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -27,6 +28,11 @@ jobs:
       CI: "1"
       EXPO_PUBLIC_CONVEX_URL: https://amicable-dogfish-440.eu-west-1.convex.cloud
       EXPO_NO_TELEMETRY: "1"
+      # Pevný testovací klíč z repa — buildy jdou instalovat přes sebe.
+      K4Y_KEYSTORE_PATH: ${{ github.workspace }}/mobile-customer/k4y-test.keystore
+      K4Y_KEYSTORE_PASSWORD: k4ywear1
+      K4Y_KEY_ALIAS: k4ywear
+      K4Y_KEY_PASSWORD: k4ywear1
 
     steps:
       - name: Checkout repository
@@ -57,29 +63,30 @@ jobs:
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install
 
-      - name: Build unsigned production APK
+      - name: Build signed production APK
         working-directory: mobile-customer/android
         run: ./gradlew assembleRelease
 
-      - name: Prepare unsigned APK and signing tools
+      - name: Collect APK
         run: |
-          RELEASE_DIR="android/app/build/outputs/apk/release"
-          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
-          UNSIGNED_APK="$(find "$RELEASE_DIR" -maxdepth 1 -type f -name '*release*.apk' | head -1)"
-          test -n "$BUILD_TOOLS"
-          test -n "$UNSIGNED_APK"
-          cp "$UNSIGNED_APK" "$RELEASE_DIR/kuryr4you-zakaznik-unsigned.apk"
-          mkdir -p "$RELEASE_DIR/signing-tools/lib"
-          cp "$BUILD_TOOLS/apksigner" "$RELEASE_DIR/signing-tools/apksigner"
-          cp "$BUILD_TOOLS/zipalign" "$RELEASE_DIR/signing-tools/zipalign"
-          cp "$BUILD_TOOLS/lib/apksigner.jar" "$RELEASE_DIR/signing-tools/lib/apksigner.jar"
+          APK="$(find android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" kuryr4you-zakaznik.apk
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kuryr4you-zakaznik-unsigned
-          path: |
-            mobile-customer/android/app/build/outputs/apk/release/kuryr4you-zakaznik-unsigned.apk
-            mobile-customer/android/app/build/outputs/apk/release/signing-tools
+          name: kuryr4you-zakaznik-apk
+          path: mobile-customer/kuryr4you-zakaznik.apk
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
+
+      - name: Publish APK to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: customer-latest
+          name: Kuryr4You Zákazník
+          body: |
+            Zákaznická aplikace pro Android — instalace ze souboru APK.
+            Poznámky k verzi jsou v mobile-customer/release.json.
+          files: mobile-customer/kuryr4you-zakaznik.apk

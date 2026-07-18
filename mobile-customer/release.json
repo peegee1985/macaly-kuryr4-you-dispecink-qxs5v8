@@ -1,11 +1,11 @@
 {
-  "version": "1.0.0",
-  "versionCode": 3,
+  "version": "1.1.0",
+  "versionCode": 4,
   "minimumVersionCode": 3,
   "downloadUrl": "https://github.com/peegee1985/macaly-kuryr4-you-dispecink-qxs5v8/releases/download/customer-latest/kuryr4you-zakaznik.apk",
   "releaseNotes": [
-    "První produkční verze zákaznické aplikace",
-    "Objednávky, sledování zásilek, doklady a oznámení",
-    "Nová jednotná ikona K4Y"
+    "Platba objednávky online přímo z detailu zásilky",
+    "Sledování zásilky na živé mapě",
+    "Opravená kontrola aktualizací"
   ]
 }

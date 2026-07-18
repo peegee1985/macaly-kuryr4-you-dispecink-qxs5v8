@@ -3,7 +3,7 @@
     "name": "Kuryr4You Zakaznik",
     "slug": "kuryr4you-zakaznik",
     "scheme": "kuryr4you-customer",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0F111A",
@@ -11,7 +11,7 @@
     "icon": "./assets/icon.png",
     "android": {
       "package": "cz.kuryr4you.customer",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0F111A"

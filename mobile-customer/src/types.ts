@@ -56,6 +56,7 @@ export type Ride = {
   podDeliveredAt?: number;
   podRecipientName?: string;
   isPaid: boolean;
+  stripePaymentUrl?: string;
 };
 
 export type TrackingRide = {
