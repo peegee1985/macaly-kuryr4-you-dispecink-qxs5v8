@@ -20,6 +20,7 @@ export type CustomerUser = {
   role: string;
   status: "active" | "pending" | "inactive";
   corporateStatus: "none" | "pending" | "approved";
+  paymentPreference?: "invoice" | "card";
   companyName?: string;
   companyAddress?: string;
   companyIco?: string;

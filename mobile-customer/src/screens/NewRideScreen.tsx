@@ -2,14 +2,14 @@ import DateTimePicker, { type DateTimePickerEvent } from "@react-native-communit
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useAction, useMutation } from "convex/react";
 import { useEffect, useState } from "react";
-import { Platform, Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { Linking, Platform, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 
 import { AddressField } from "../components/AddressField";
 import { AppButton, Card, FormField, PageHeader, Screen } from "../components/ui";
 import { cargoLabel, formatDateTime } from "../lib/format";
 import { api } from "../lib/api";
 import { colors, radius, spacing } from "../theme";
-import type { CargoType, RideTemplate } from "../types";
+import type { CargoType, CustomerUser, RideTemplate } from "../types";
 
 type AddressValue = { address: string; lat?: number; lng?: number };
 type FormState = {
@@ -50,16 +50,23 @@ function initialForm(template?: RideTemplate): FormState {
 }
 
 export function NewRideScreen({
+  user,
   initialTemplate,
   onCreated,
 }: {
+  user: CustomerUser;
   initialTemplate?: RideTemplate;
   onCreated: () => void;
 }) {
   const createRide = useMutation(api.rides.createRide);
   const saveTemplate = useMutation(api.templates.saveTemplate);
   const suggestPrice = useAction(api.aiPricing.suggestPrice);
+  const createRideAndCheckout = useAction(api.rides.createRideAndCheckout);
   const [finalPrice, setFinalPrice] = useState<number | null>(null);
+
+  // Firma se schváleným účtem a preferencí faktury jede bez platby;
+  // všichni ostatní (běžný zákazník i firma s kartou) platí hned.
+  const paysByCard = !(user.corporateStatus === "approved" && user.paymentPreference !== "card");
   const [form, setForm] = useState<FormState>(() => initialForm(initialTemplate));
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [templateName, setTemplateName] = useState("");
@@ -112,28 +119,7 @@ export function NewRideScreen({
         weight: form.weight ? Number(form.weight) : undefined,
         notes: form.notes.trim() || undefined,
       };
-      // Cenu spočítá backend (stejné AI nacenění jako na webu). Když se
-      // nacenění nepovede, objednávka projde bez ceny a nacení ji dispečer.
-      let price: number | undefined;
-      try {
-        const pricing = await suggestPrice({
-          pickupAddress: rideTemplate.pickupAddress,
-          deliveryAddress: rideTemplate.deliveryAddress,
-          cargoType: rideTemplate.cargoType,
-          cargoDescription: rideTemplate.cargoDescription,
-          weight: rideTemplate.weight,
-          quantity: rideTemplate.quantity,
-          notes: rideTemplate.notes,
-          requestedPickupAt: form.pickupAt.getTime(),
-          requestedDeliveryAt: form.deliveryAt.getTime(),
-        });
-        price = pricing?.doporucenaCena > 0 ? pricing.doporucenaCena : undefined;
-      } catch {
-        price = undefined;
-      }
-      setFinalPrice(price ?? null);
-
-      await createRide({
+      const rideArgs = {
         ...rideTemplate,
         pickupLat: form.pickupAddress.lat,
         pickupLng: form.pickupAddress.lng,
@@ -141,8 +127,44 @@ export function NewRideScreen({
         deliveryLat: form.deliveryAddress.lat,
         deliveryLng: form.deliveryAddress.lng,
         requestedDeliveryAt: form.deliveryAt.getTime(),
-        price,
-      });
+      };
+
+      if (!paysByCard) {
+        // Firma na fakturu: bez ceny a bez platby, jde do 14denní fakturace
+        setFinalPrice(null);
+        await createRide(rideArgs);
+      } else {
+        // Cenu spočítá backend (stejné AI nacenění jako na webu). Když se
+        // nacenění nepovede, objednávka projde bez ceny a nacení ji dispečer.
+        let price: number | undefined;
+        try {
+          const pricing = await suggestPrice({
+            pickupAddress: rideTemplate.pickupAddress,
+            deliveryAddress: rideTemplate.deliveryAddress,
+            cargoType: rideTemplate.cargoType,
+            cargoDescription: rideTemplate.cargoDescription,
+            weight: rideTemplate.weight,
+            quantity: rideTemplate.quantity,
+            notes: rideTemplate.notes,
+            requestedPickupAt: form.pickupAt.getTime(),
+            requestedDeliveryAt: form.deliveryAt.getTime(),
+          });
+          price = pricing?.doporucenaCena > 0 ? pricing.doporucenaCena : undefined;
+        } catch {
+          price = undefined;
+        }
+        setFinalPrice(price ?? null);
+
+        if (price) {
+          // Vytvoření zásilky + synchronní checkout → rovnou do platební brány
+          const result = await createRideAndCheckout({ ...rideArgs, price });
+          if (result?.checkoutUrl) {
+            void Linking.openURL(result.checkoutUrl);
+          }
+        } else {
+          await createRide(rideArgs);
+        }
+      }
       if (saveAsTemplate) {
         await saveTemplate({ title: templateName.trim(), rideTemplate });
       }
@@ -163,9 +185,11 @@ export function NewRideScreen({
           <Text style={styles.successPrice}>{finalPrice.toLocaleString("cs-CZ")} Kč</Text>
         ) : null}
         <Text style={styles.successText}>
-          {finalPrice
-            ? "Zaplatit můžete kartou nebo Google Pay v detailu zásilky (Zaplatit online) — odkaz přišel i e-mailem."
-            : "Dispečer ji nyní zpracuje a zašle platební odkaz. O změně stavu vás upozorníme."}
+          {!paysByCard
+            ? "Přeprava bude účtována fakturou v rámci 14denního cyklu. O změně stavu vás upozorníme."
+            : finalPrice
+              ? "Platební brána se otevřela v prohlížeči (karta / Google Pay). Odkaz máte i v e-mailu a v detailu zásilky."
+              : "Dispečer ji nyní zpracuje a zašle platební odkaz. O změně stavu vás upozorníme."}
         </Text>
         <AppButton title="Zobrazit moje zásilky" icon="cube-outline" onPress={onCreated} style={styles.successButton} />
         <AppButton title="Vytvořit další" variant="secondary" onPress={() => { setForm(initialForm()); setCreated(false); setSaveAsTemplate(false); setTemplateName(""); }} style={styles.successButton} />
@@ -224,7 +248,13 @@ export function NewRideScreen({
       </Card>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      <AppButton title="Odeslat zásilku" icon="send-outline" loading={loading} onPress={() => void submit()} style={styles.submit} />
+      <AppButton
+        title={paysByCard ? "Pokračovat k platbě" : "Odeslat zásilku"}
+        icon={paysByCard ? "card-outline" : "send-outline"}
+        loading={loading}
+        onPress={() => void submit()}
+        style={styles.submit}
+      />
       <Text style={styles.disclaimer}>Cena bude potvrzena dispečerem před přidělením řidiče.</Text>
     </Screen>
   );
