@@ -8,6 +8,10 @@ function makeConversationKey(a: string, b: string): string {
   return [a, b].sort().join("_")
 }
 
+function canUseChat(role: string): boolean {
+  return role === "driver" || role === "dispatcher"
+}
+
 // List all conversations for current user (latest message per partner)
 export const getMyConversations = query({
   args: {},
@@ -16,6 +20,7 @@ export const getMyConversations = query({
     if (!authId) return []
     const me = await ctx.db.get(authId as Id<"users">)
     if (!me) return []
+    if (!canUseChat(me.role)) return []
 
     // Fetch last 200 messages involving me
     const sent = await ctx.db
@@ -75,6 +80,7 @@ export const getMessages = query({
     if (!authId) return []
     const me = await ctx.db.get(authId as Id<"users">)
     if (!me) return []
+    if (!canUseChat(me.role)) return []
 
     const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000
     const key = makeConversationKey(me._id, args.partnerId)
@@ -98,6 +104,7 @@ export const getArchivedMessages = query({
     if (!authId) return []
     const me = await ctx.db.get(authId as Id<"users">)
     if (!me) return []
+    if (!canUseChat(me.role)) return []
 
     const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000
     const key = makeConversationKey(me._id, args.partnerId)
@@ -121,6 +128,7 @@ export const getArchivedMessageCount = query({
     if (!authId) return 0
     const me = await ctx.db.get(authId as Id<"users">)
     if (!me) return 0
+    if (!canUseChat(me.role)) return 0
 
     const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000
     const key = makeConversationKey(me._id, args.partnerId)
@@ -144,27 +152,35 @@ export const sendMessage = mutation({
     if (!authId) throw new Error("Nepřihlášen")
     const me = await ctx.db.get(authId as Id<"users">)
     if (!me) throw new Error("Profil nenalezen")
-    // Customers are not allowed to use chat
-    if (me.role === "customer") throw new Error("Zákazníci nemají přístup k chatu")
+    if (!canUseChat(me.role)) throw new Error("Zákaznické účty nemají přístup k chatu")
+    const receiver = await ctx.db.get(args.receiverId)
+    if (!receiver || receiver.status !== "active") throw new Error("Příjemce není dostupný")
+    if (!canUseChat(receiver.role)) throw new Error("Tomuto účtu nelze poslat zprávu")
+    if (receiver._id === me._id) throw new Error("Nelze poslat zprávu sám sobě")
+
+    const text = args.text.trim()
+    if (!text) throw new Error("Zpráva je prázdná")
+    if (text.length > 2000) throw new Error("Zpráva je příliš dlouhá")
 
     const key = makeConversationKey(me._id, args.receiverId)
     await ctx.db.insert("chatMessages", {
       senderId: me._id,
       receiverId: args.receiverId,
       conversationKey: key,
-      text: args.text.trim(),
+      text,
       read: false,
     })
-    console.log(`Chat: ${me.name ?? me.email} → ${args.receiverId}: ${args.text.substring(0, 50)}`)
+    console.log(`Chat: ${me.name ?? me.email} → ${args.receiverId}: ${text.substring(0, 50)}`)
 
     // Push notifikace příjemci
     const senderName = me.name ?? me.email ?? "Neznámý"
-    const receiverRole = (await ctx.db.get(args.receiverId))?.role ?? "dispatcher"
-    const targetUrl = receiverRole === "driver" ? "/ridic" : "/dispatcer"
+    const targetUrl = receiver.role === "driver"
+      ? "/ridic"
+      : "/dispatcer"
     await ctx.scheduler.runAfter(0, internal.pushNotificationsActions.sendPushToUser, {
       userId: args.receiverId,
       title: `💬 ${senderName}`,
-      body: args.text.trim().substring(0, 100),
+      body: text.substring(0, 100),
       url: targetUrl,
       tag: `chat-${me._id}`,
     })
@@ -182,6 +198,7 @@ export const markConversationRead = mutation({
     if (!authId) throw new Error("Nepřihlášen")
     const me = await ctx.db.get(authId as Id<"users">)
     if (!me) throw new Error("Profil nenalezen")
+    if (!canUseChat(me.role)) throw new Error("Zákaznické účty nemají přístup k chatu")
 
     const unread = await ctx.db
       .query("chatMessages")
@@ -205,6 +222,7 @@ export const getUnreadChatCount = query({
     if (!authId) return 0
     const me = await ctx.db.get(authId as Id<"users">)
     if (!me) return 0
+    if (!canUseChat(me.role)) return 0
     const unread = await ctx.db
       .query("chatMessages")
       .withIndex("by_receiver_unread", q => q.eq("receiverId", me._id).eq("read", false))
@@ -213,7 +231,7 @@ export const getUnreadChatCount = query({
   },
 })
 
-// List all drivers + dispatchers (for dispatcher to start a chat)
+// List users the current role is allowed to contact.
 export const getChatUsers = query({
   args: {},
   handler: async (ctx) => {
@@ -221,18 +239,20 @@ export const getChatUsers = query({
     if (!authId) return []
     const me = await ctx.db.get(authId as Id<"users">)
     if (!me) return []
+    if (!canUseChat(me.role)) return []
 
     const users = await ctx.db
       .query("users")
       .filter(q => q.neq(q.field("_id"), me._id))
-      .filter(q => q.or(
-        q.eq(q.field("role"), "driver"),
-        q.eq(q.field("role"), "dispatcher"),
-      ))
       .collect()
 
     return users
-      .filter(u => u.status === "active")
+      .filter(u => {
+        if (u.status !== "active") return false
+        if (me.role === "dispatcher") return ["driver", "dispatcher"].includes(u.role)
+        if (me.role === "driver") return u.role === "dispatcher" || u.role === "driver"
+        return false
+      })
       .map(u => ({ _id: u._id, name: u.name ?? u.email, role: u.role, email: u.email }))
   },
 })

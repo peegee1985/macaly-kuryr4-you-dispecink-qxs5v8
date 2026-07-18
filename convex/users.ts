@@ -128,6 +128,7 @@ export const updateMyProfile = mutation({
     companyAddress: v.optional(v.string()),
     companyIco: v.optional(v.string()),
     companyDic: v.optional(v.string()),
+    paymentPreference: v.optional(v.union(v.literal("invoice"), v.literal("card"))),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -146,6 +147,11 @@ export const updateMyProfile = mutation({
     if (args.companyAddress !== undefined) updates.companyAddress = args.companyAddress || undefined
     if (args.companyIco !== undefined) updates.companyIco = args.companyIco || undefined
     if (args.companyDic !== undefined) updates.companyDic = args.companyDic || undefined
+    if (args.paymentPreference !== undefined) {
+      // Only corporate customers may change payment preference
+      if (user.corporateStatus !== "approved") throw new Error("Preference platby je dostupná pouze pro firemní účty")
+      updates.paymentPreference = args.paymentPreference
+    }
 
     await ctx.db.patch(user._id, updates)
     return null

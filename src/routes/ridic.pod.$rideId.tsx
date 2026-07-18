@@ -69,6 +69,10 @@ function PODPage() {
       setError('Zadejte jméno příjemce.')
       return
     }
+    if (photos.length === 0) {
+      setError('Přidejte alespoň jednu fotografii doručení.')
+      return
+    }
     if (sigRef.current?.isEmpty()) {
       setError('Podpis je povinný.')
       return
@@ -152,8 +156,8 @@ function PODPage() {
 
           {/* Photo capture */}
           <div>
-            <label className="block text-sm font-medium mb-2">Fotografie zásilky</label>
-            <p className="text-xs text-muted-foreground mb-3">Nepovinné — max. 4 fotky (doporučeno)</p>
+            <label className="block text-sm font-medium mb-2">Fotografie zásilky *</label>
+            <p className="text-xs text-muted-foreground mb-3">Povinná alespoň 1 fotografie — maximálně 4</p>
 
             {photoPreviews.length > 0 && (
               <div className="grid grid-cols-2 gap-2 mb-3">

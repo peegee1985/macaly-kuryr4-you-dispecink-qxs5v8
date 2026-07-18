@@ -21,6 +21,8 @@ export default defineSchema({
     vehicleType: v.optional(v.string()),
     vehiclePlate: v.optional(v.string()),
     driverNotes: v.optional(v.string()),
+    // Payment preference for corporate customers: "invoice" (default) or "card"
+    paymentPreference: v.optional(v.union(v.literal("invoice"), v.literal("card"))),
     // Receipts: admin can enable/disable per customer (null = use default)
     receiptEnabled: v.optional(v.boolean()),
     // Driver notification preferences (undefined = default true)
@@ -327,6 +329,25 @@ export default defineSchema({
     .index("by_driver", ["driverId"])
     .index("by_ride", ["rideId"])
     .index("by_driver_ride", ["driverId", "rideId"]),
+
+  // Párování hodinkové aplikace řidiče (krátkodobý 6místný kód)
+  wearPairings: defineTable({
+    driverId: v.id("users"),
+    code: v.string(),
+    expiresAt: v.number(),
+  })
+    .index("by_code", ["code"])
+    .index("by_driver", ["driverId"]),
+
+  // Trvalé tokeny hodinkové aplikace řidiče (ukládá se jen SHA-256 hash)
+  wearTokens: defineTable({
+    driverId: v.id("users"),
+    tokenHash: v.string(),
+    createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_hash", ["tokenHash"])
+    .index("by_driver", ["driverId"]),
 
   // Temporary orders created on landing page before payment is confirmed
   pendingGuestOrders: defineTable({

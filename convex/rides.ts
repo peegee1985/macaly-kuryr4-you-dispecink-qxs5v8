@@ -1,8 +1,9 @@
 import { v } from "convex/values"
-import { mutation, query, internalMutation, internalQuery, action } from "./_generated/server"
+import { mutation, query, internalMutation, internalQuery, action, internalAction } from "./_generated/server"
+import type { MutationCtx } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
-import type { Id } from "./_generated/dataModel"
-import { internal } from "./_generated/api"
+import type { Doc, Id } from "./_generated/dataModel"
+import { api, internal } from "./_generated/api"
 
 // ─── Rating ────────────────────────────────────────────────────────────────
 
@@ -281,6 +282,12 @@ export const createRide = mutation({
     quantity: v.number(),
     notes: v.optional(v.string()),
     attachmentIds: v.optional(v.array(v.id("_storage"))),
+    // Cena z AI nacenění (mobilní aplikace) — po vytvoření se automaticky
+    // vygeneruje platební odkaz
+    price: v.optional(v.number()),
+    // Pokud true, přeskočí automatické naplánování platebního odkazu
+    // (používá createRideAndCheckout, který ho vytvoří synchronně)
+    _skipAutoPayment: v.optional(v.boolean()),
   },
   returns: v.id("rides"),
   handler: async (ctx, args) => {
@@ -316,9 +323,20 @@ export const createRide = mutation({
       podPhotoIds: [],
       isPaid: false,
       rideNumber: generateRideNumber(),
+      price: args.price && args.price > 0 ? Math.round(args.price) : undefined,
+      currency: args.price && args.price > 0 ? "CZK" : undefined,
     })
 
     console.log(`Ride created: ${rideId}`)
+
+    // Naceněná objednávka → rovnou vygenerovat platební odkaz,
+    // pokud zákazník není firemní nebo má nastavenou preferenci "card"
+    // a pokud volající nepožaduje synchronní vytvoření (_skipAutoPayment = true)
+    const isCorporateOnInvoice =
+      user.corporateStatus === "approved" && user.paymentPreference !== "card"
+    if (args.price && args.price > 0 && !isCorporateOnInvoice && !args._skipAutoPayment) {
+      await ctx.scheduler.runAfter(0, internal.rides.autoCreatePaymentLink, { rideId })
+    }
 
     // Notify admin about new order
     const adminEmail = process.env.RECIPIENT_EMAIL
@@ -668,7 +686,17 @@ export const updateRideStatus = mutation({
     if (!authId) throw new Error("Nejste přihlášeni")
     const user = await ctx.db.get(authId as Id<"users">)
     if (!user) throw new Error("Profil nenalezen")
+    await updateRideStatusCore(ctx, user, args)
+    return null
+  },
+})
 
+// Sdílená logika změny stavu — používá ji mutace výše i hodinkové API (wear.ts)
+export async function updateRideStatusCore(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  args: { rideId: Id<"rides">; status: "pickup" | "transit" | "delivered" | "cancelled" },
+) {
     const ride = await ctx.db.get(args.rideId)
     if (!ride) throw new Error("Zakázka nenalezena")
 
@@ -750,10 +778,7 @@ export const updateRideStatus = mutation({
       trackingToken: ride.trackingToken,
       status: args.status,
     })
-
-    return null
-  },
-})
+}
 
 // Dispatcher: update ride details
 export const updateRide = mutation({
@@ -889,12 +914,15 @@ export const submitPOD = mutation({
     if (!ride) throw new Error("Zakázka nenalezena")
     // Drivers can only submit POD for their own assigned rides
     if (user.role === "driver" && ride.driverId !== user._id) throw new Error("Zakázka nenalezena")
+    if (!args.recipientName?.trim()) throw new Error("Zadejte jméno příjemce")
+    if (args.photoIds.length === 0) throw new Error("Přidejte alespoň jednu fotografii doručení")
+    if (!args.signatureId) throw new Error("Podpis příjemce je povinný")
 
     await ctx.db.patch(args.rideId, {
       podPhotoIds: args.photoIds,
       podSignatureId: args.signatureId,
       podDeliveredAt: Date.now(),
-      podRecipientName: args.recipientName,
+      podRecipientName: args.recipientName.trim(),
       status: "delivered",
       codCollected: args.codCollected ?? false,
     })
@@ -1460,14 +1488,20 @@ export const selfAssignRide = mutation({
     if (!authId) throw new Error("Nepřihlášen")
     const user = await ctx.db.get(authId as Id<"users">)
     if (!user || user.role !== "driver") throw new Error("Pouze řidiči mohou přijímat zákazky")
+    await selfAssignRideCore(ctx, user, args.rideId)
+    return null
+  },
+})
 
-    const ride = await ctx.db.get(args.rideId)
+// Sdílená logika přijetí zakázky — mutace výše i hodinkové API (wear.ts)
+export async function selfAssignRideCore(ctx: MutationCtx, user: Doc<"users">, rideId: Id<"rides">) {
+    const ride = await ctx.db.get(rideId)
     if (!ride) throw new Error("Zákazka nenalezena")
     if (ride.status !== "approved") throw new Error("Zákazka není ve stavu k přijetí")
     if (ride.driverId) throw new Error("Zákazka už má přiřazeného řidiče")
 
-    await ctx.db.patch(args.rideId, {
-      driverId: authId as Id<"users">,
+    await ctx.db.patch(rideId, {
+      driverId: user._id,
       status: "assigned",
     })
 
@@ -1475,7 +1509,7 @@ export const selfAssignRide = mutation({
     const rejection = await ctx.db
       .query("rideRejections")
       .withIndex("by_driver_ride", (q) =>
-        q.eq("driverId", authId as Id<"users">).eq("rideId", args.rideId)
+        q.eq("driverId", user._id).eq("rideId", rideId)
       )
       .first()
     if (rejection) await ctx.db.delete(rejection._id)
@@ -1493,9 +1527,7 @@ export const selfAssignRide = mutation({
     }
 
     console.log(`Driver ${user.name} self-assigned ride ${ride.rideNumber}`)
-    return null
-  },
-})
+}
 
 // Driver: reject a ride (hide from Volné, store in Odmítnuté)
 export const rejectRide = mutation({
@@ -1505,29 +1537,33 @@ export const rejectRide = mutation({
     if (!authId) throw new Error("Nepřihlášen")
     const user = await ctx.db.get(authId as Id<"users">)
     if (!user || user.role !== "driver") throw new Error("Pouze řidiči mohou odmítat zákazky")
+    await rejectRideCore(ctx, user, args.rideId)
+    return null
+  },
+})
 
+// Sdílená logika odmítnutí zakázky — mutace výše i hodinkové API (wear.ts)
+export async function rejectRideCore(ctx: MutationCtx, user: Doc<"users">, rideId: Id<"rides">) {
     // Check ride still available
-    const ride = await ctx.db.get(args.rideId)
+    const ride = await ctx.db.get(rideId)
     if (!ride || ride.status !== "approved") throw new Error("Zákazka není dostupná")
 
     // Prevent duplicate
     const existing = await ctx.db
       .query("rideRejections")
       .withIndex("by_driver_ride", (q) =>
-        q.eq("driverId", authId as Id<"users">).eq("rideId", args.rideId)
+        q.eq("driverId", user._id).eq("rideId", rideId)
       )
       .first()
-    if (existing) return null
+    if (existing) return
 
     await ctx.db.insert("rideRejections", {
-      driverId: authId as Id<"users">,
-      rideId: args.rideId,
+      driverId: user._id,
+      rideId,
       rejectedAt: Date.now(),
     })
     console.log(`Driver ${user.name} rejected ride ${ride.rideNumber}`)
-    return null
-  },
-})
+}
 
 // Driver: un-reject a ride (take from Odmítnuté back to Volné or self-assign)
 export const unRejectRide = mutation({
@@ -1665,6 +1701,127 @@ export const sendPaymentLink = action({
 
     if (!result.success) throw new Error(result.error ?? "Nepodařilo se vytvořit platební odkaz")
     return result
+  },
+})
+
+// Internal: data pro automatický platební odkaz (bez kontroly role —
+// spouští se jen ze createRide pro čerstvě vytvořenou zakázku)
+export const getAutoPaymentData = internalQuery({
+  args: { rideId: v.id("rides") },
+  handler: async (ctx, args) => {
+    const ride = await ctx.db.get(args.rideId)
+    if (!ride) return null
+    const customer = await ctx.db.get(ride.customerId)
+    if (!customer) return null
+    return { ride, customer }
+  },
+})
+
+// Internal: po vytvoření naceněné objednávky z aplikace vytvoří Stripe
+// checkout (podporuje Google Pay / Apple Pay) a uloží odkaz k zakázce
+export const autoCreatePaymentLink = internalAction({
+  args: { rideId: v.id("rides") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const data = await ctx.runQuery(internal.rides.getAutoPaymentData, { rideId: args.rideId })
+    if (!data || !data.ride.price || data.ride.price <= 0) return null
+    const { ride, customer } = data
+
+    // Obranná vrstva: firemní zákazník s preferencí faktura → přeskočit
+    if (customer.corporateStatus === "approved" && customer.paymentPreference !== "card") {
+      console.log("[rides] autoCreatePaymentLink skipped — corporate invoice preference", ride.rideNumber)
+      return null
+    }
+
+    const result = await ctx.runAction(internal.stripe.createPaymentLink, {
+      rideId: args.rideId,
+      rideNumber: ride.rideNumber,
+      price: ride.price,
+      currency: ride.currency ?? "CZK",
+      customerEmail: customer.email,
+      customerName: customer.name ?? customer.email,
+      pickupAddress: ride.pickupAddress,
+      deliveryAddress: ride.deliveryAddress,
+    })
+    if (!result.success) {
+      console.error("[rides] autoCreatePaymentLink failed", ride.rideNumber, result.error)
+    }
+    return null
+  },
+})
+
+// Public action: vytvoří zásilku + synchronně vygeneruje Stripe checkout.
+// Volá se z webového formuláře pro běžné (nefiremní) zákazníky.
+// Vrací rideId a URL platební brány, na kterou přesměrujeme zákazníka.
+export const createRideAndCheckout = action({
+  args: {
+    pickupAddress: v.string(),
+    pickupLat: v.optional(v.number()),
+    pickupLng: v.optional(v.number()),
+    pickupContactName: v.string(),
+    pickupContactPhone: v.string(),
+    requestedPickupAt: v.number(),
+    deliveryAddress: v.string(),
+    deliveryLat: v.optional(v.number()),
+    deliveryLng: v.optional(v.number()),
+    deliveryContactName: v.string(),
+    deliveryContactPhone: v.string(),
+    requestedDeliveryAt: v.number(),
+    cargoType: v.union(
+      v.literal("envelope"), v.literal("parcel"), v.literal("box"),
+      v.literal("pallet"), v.literal("other"),
+    ),
+    cargoDescription: v.string(),
+    weight: v.optional(v.number()),
+    quantity: v.number(),
+    notes: v.optional(v.string()),
+    price: v.number(),
+  },
+  returns: v.object({
+    rideId: v.id("rides"),
+    checkoutUrl: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const { price, ...rideArgs } = args
+
+    // Vytvoř zásilku s cenou — přeskočíme asynchronní scheduler,
+    // platební odkaz vytvoříme hned níže synchronně.
+    const rideId = await ctx.runMutation(api.rides.createRide, {
+      ...rideArgs,
+      price,
+      _skipAutoPayment: true,
+    })
+
+    console.log("[createRideAndCheckout] ride created:", rideId)
+
+    // Načti zásilku + zákazníka
+    const data = await ctx.runQuery(internal.rides.getAutoPaymentData, { rideId })
+    if (!data || !data.ride.price || data.ride.price <= 0) {
+      console.log("[createRideAndCheckout] no price, skipping checkout")
+      return { rideId }
+    }
+
+    const { ride, customer } = data
+
+    // Synchronní Stripe checkout
+    const result = await ctx.runAction(internal.stripe.createPaymentLink, {
+      rideId,
+      rideNumber: ride.rideNumber,
+      price: ride.price,
+      currency: ride.currency ?? "CZK",
+      customerEmail: customer.email,
+      customerName: customer.name ?? customer.email,
+      pickupAddress: ride.pickupAddress,
+      deliveryAddress: ride.deliveryAddress,
+    })
+
+    if (!result.success) {
+      console.error("[createRideAndCheckout] stripe failed:", result.error)
+      return { rideId }
+    }
+
+    console.log("[createRideAndCheckout] checkout URL:", result.paymentUrl)
+    return { rideId, checkoutUrl: result.paymentUrl }
   },
 })
 
