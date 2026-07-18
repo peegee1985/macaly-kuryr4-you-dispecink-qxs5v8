@@ -8,20 +8,37 @@ import type { Ride } from "../types";
 
 export function RideCard({ ride, onPress }: { ride: Ride; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Otevřít zakázku ${ride.rideNumber}`}
+      onPress={onPress}
+      style={({ pressed }) => pressed && styles.pressed}
+    >
       <Card style={styles.card}>
         <View style={styles.topRow}>
           <View>
             <Text style={styles.number}>#{ride.rideNumber}</Text>
             <Text style={styles.time}>{formatDateTime(ride.requestedPickupAt)}</Text>
           </View>
-          <StatusPill status={ride.status} />
+          <View style={styles.badges}>
+            {ride.isMultiStop && ride.stops?.length ? (
+              <View style={styles.multiStopBadge}>
+                <Ionicons name="git-branch-outline" size={12} color={colors.info} />
+                <Text style={styles.multiStopText}>{ride.stops.length} zastávek</Text>
+              </View>
+            ) : null}
+            <StatusPill status={ride.status} />
+          </View>
         </View>
 
         <View style={styles.route}>
           <View style={styles.routeRail}>
             <View style={[styles.dot, styles.pickupDot]} />
             <View style={styles.line} />
+            {ride.isMultiStop && ride.stops?.length ? (
+              <View style={styles.stopCountDot}><Text style={styles.stopCountText}>{ride.stops.length}</Text></View>
+            ) : null}
+            {ride.isMultiStop && ride.stops?.length ? <View style={styles.line} /> : null}
             <View style={[styles.dot, styles.deliveryDot]} />
           </View>
           <View style={styles.routeCopy}>
@@ -53,6 +70,9 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.72 },
   card: { gap: spacing.lg },
   topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: spacing.sm },
+  badges: { alignItems: "flex-end", gap: 6 },
+  multiStopBadge: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderColor: "rgba(59,130,246,0.35)", backgroundColor: "rgba(59,130,246,0.10)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
+  multiStopText: { color: colors.info, fontSize: 9, fontWeight: "800" },
   number: { color: colors.text, fontSize: 18, fontWeight: "900" },
   time: { color: colors.textMuted, fontSize: 12, marginTop: 3 },
   route: { flexDirection: "row", gap: spacing.md },
@@ -61,6 +81,8 @@ const styles = StyleSheet.create({
   pickupDot: { backgroundColor: colors.background, borderColor: colors.primary },
   deliveryDot: { backgroundColor: colors.success, borderColor: colors.success },
   line: { flex: 1, width: 2, minHeight: 34, backgroundColor: colors.border },
+  stopCountDot: { minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", backgroundColor: colors.info },
+  stopCountText: { color: colors.white, fontSize: 9, fontWeight: "900" },
   routeCopy: { flex: 1, gap: spacing.lg },
   routeLabel: { color: colors.textMuted, fontSize: 9, letterSpacing: 1.2, fontWeight: "800" },
   address: { color: colors.text, fontSize: 14, fontWeight: "600", marginTop: 3, lineHeight: 19 },

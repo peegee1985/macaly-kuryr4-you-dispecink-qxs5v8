@@ -8,14 +8,28 @@ export type RideStatus =
   | "cancelled"
   | "failed";
 
+export type RideStop = {
+  address: string;
+  lat?: number;
+  lng?: number;
+  contactName: string;
+  contactPhone: string;
+  notes?: string;
+  order: number;
+};
+
 export type Ride = {
   _id: string;
   rideNumber: string;
   status: RideStatus;
   pickupAddress: string;
+  pickupLat?: number;
+  pickupLng?: number;
   pickupContactName?: string;
   pickupContactPhone?: string;
   deliveryAddress: string;
+  deliveryLat?: number;
+  deliveryLng?: number;
   deliveryContactName?: string;
   deliveryContactPhone?: string;
   requestedPickupAt: number;
@@ -31,6 +45,9 @@ export type Ride = {
   codEnabled?: boolean;
   codAmount?: number;
   codCollected?: boolean;
+  podDeliveredAt?: number;
+  isMultiStop?: boolean;
+  stops?: RideStop[];
 };
 
 export type DriverUser = {
@@ -39,9 +56,47 @@ export type DriverUser = {
   name?: string;
   phone?: string;
   role: string;
-  status: "pending" | "active" | "blocked";
+  status: "pending" | "active" | "inactive" | "blocked";
   vehicleType?: string;
   vehiclePlate?: string;
+  driverPushAssigned?: boolean;
+  driverPushAvailable?: boolean;
+  driverEmailAssigned?: boolean;
+};
+
+export type ChatConversation = {
+  partnerId: string;
+  partnerName: string;
+  partnerRole: string;
+  lastMessage: string;
+  lastAt: number;
+  unread: number;
+};
+
+export type ChatUser = {
+  _id: string;
+  name: string;
+  role: string;
+  email?: string;
+};
+
+export type ChatMessage = {
+  _id: string;
+  _creationTime: number;
+  senderId: string;
+  receiverId: string;
+  text: string;
+  read: boolean;
+};
+
+export type AppNotification = {
+  _id: string;
+  _creationTime: number;
+  title: string;
+  message: string;
+  read: boolean;
+  type: string;
+  rideId?: string;
 };
 
 export type ServiceLocation = {
@@ -85,4 +140,4 @@ export type Availability = {
   notes?: string;
 };
 
-export type MainTab = "home" | "rides" | "vending" | "availability" | "profile";
+export type MainTab = "home" | "rides" | "chat" | "vending" | "availability" | "profile";

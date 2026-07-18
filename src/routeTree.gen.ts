@@ -16,6 +16,7 @@ import { Route as RidicRouteImport } from './routes/ridic'
 import { Route as RegistraceRouteImport } from './routes/registrace'
 import { Route as PrihlaseniRouteImport } from './routes/prihlaseni'
 import { Route as PlatbaUspesnaRouteImport } from './routes/platba-uspesna'
+import { Route as OchranaSoukromiRouteImport } from './routes/ochrana-soukromi'
 import { Route as ObjednatRouteImport } from './routes/objednat'
 import { Route as MockupLightRouteImport } from './routes/mockup-light'
 import { Route as MockupRouteImport } from './routes/mockup'
@@ -102,6 +103,11 @@ const PrihlaseniRoute = PrihlaseniRouteImport.update({
 const PlatbaUspesnaRoute = PlatbaUspesnaRouteImport.update({
   id: '/platba-uspesna',
   path: '/platba-uspesna',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OchranaSoukromiRoute = OchranaSoukromiRouteImport.update({
+  id: '/ochrana-soukromi',
+  path: '/ochrana-soukromi',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ObjednatRoute = ObjednatRouteImport.update({
@@ -375,6 +381,7 @@ export interface FileRoutesByFullPath {
   '/mockup': typeof MockupRoute
   '/mockup-light': typeof MockupLightRoute
   '/objednat': typeof ObjednatRoute
+  '/ochrana-soukromi': typeof OchranaSoukromiRoute
   '/platba-uspesna': typeof PlatbaUspesnaRoute
   '/prihlaseni': typeof PrihlaseniRoute
   '/registrace': typeof RegistraceRoute
@@ -435,6 +442,7 @@ export interface FileRoutesByTo {
   '/mockup': typeof MockupRoute
   '/mockup-light': typeof MockupLightRoute
   '/objednat': typeof ObjednatRoute
+  '/ochrana-soukromi': typeof OchranaSoukromiRoute
   '/platba-uspesna': typeof PlatbaUspesnaRoute
   '/prihlaseni': typeof PrihlaseniRoute
   '/registrace': typeof RegistraceRoute
@@ -492,6 +500,7 @@ export interface FileRoutesById {
   '/mockup': typeof MockupRoute
   '/mockup-light': typeof MockupLightRoute
   '/objednat': typeof ObjednatRoute
+  '/ochrana-soukromi': typeof OchranaSoukromiRoute
   '/platba-uspesna': typeof PlatbaUspesnaRoute
   '/prihlaseni': typeof PrihlaseniRoute
   '/registrace': typeof RegistraceRoute
@@ -555,6 +564,7 @@ export interface FileRouteTypes {
     | '/mockup'
     | '/mockup-light'
     | '/objednat'
+    | '/ochrana-soukromi'
     | '/platba-uspesna'
     | '/prihlaseni'
     | '/registrace'
@@ -615,6 +625,7 @@ export interface FileRouteTypes {
     | '/mockup'
     | '/mockup-light'
     | '/objednat'
+    | '/ochrana-soukromi'
     | '/platba-uspesna'
     | '/prihlaseni'
     | '/registrace'
@@ -671,6 +682,7 @@ export interface FileRouteTypes {
     | '/mockup'
     | '/mockup-light'
     | '/objednat'
+    | '/ochrana-soukromi'
     | '/platba-uspesna'
     | '/prihlaseni'
     | '/registrace'
@@ -733,6 +745,7 @@ export interface RootRouteChildren {
   MockupRoute: typeof MockupRoute
   MockupLightRoute: typeof MockupLightRoute
   ObjednatRoute: typeof ObjednatRoute
+  OchranaSoukromiRoute: typeof OchranaSoukromiRoute
   PlatbaUspesnaRoute: typeof PlatbaUspesnaRoute
   PrihlaseniRoute: typeof PrihlaseniRoute
   RegistraceRoute: typeof RegistraceRoute
@@ -793,6 +806,13 @@ declare module '@tanstack/react-router' {
       path: '/platba-uspesna'
       fullPath: '/platba-uspesna'
       preLoaderRoute: typeof PlatbaUspesnaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ochrana-soukromi': {
+      id: '/ochrana-soukromi'
+      path: '/ochrana-soukromi'
+      fullPath: '/ochrana-soukromi'
+      preLoaderRoute: typeof OchranaSoukromiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/objednat': {
@@ -1351,6 +1371,7 @@ const rootRouteChildren: RootRouteChildren = {
   MockupRoute: MockupRoute,
   MockupLightRoute: MockupLightRoute,
   ObjednatRoute: ObjednatRoute,
+  OchranaSoukromiRoute: OchranaSoukromiRoute,
   PlatbaUspesnaRoute: PlatbaUspesnaRoute,
   PrihlaseniRoute: PrihlaseniRoute,
   RegistraceRoute: RegistraceRoute,
