@@ -1,0 +1,59 @@
+name: Wear OS APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/github-access-m6bup7
+      - main
+    paths:
+      - "wear/**"
+      - ".github/workflows/wear-apk.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-wear:
+    name: Build Wear OS APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: wear
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk kuryr4you-wear.apk
+
+      - name: Upload APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuryr4you-wear-apk
+          path: wear/kuryr4you-wear.apk
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish APK to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: wear-latest
+          name: K4Y Dispečink – Wear OS
+          body: |
+            Testovací APK pro hodinky (Wear OS 3+, např. Galaxy Watch Ultra).
+            Instalace z telefonu přes Wear Installer 2 — návod ve wear/README.md.
+          files: wear/kuryr4you-wear.apk

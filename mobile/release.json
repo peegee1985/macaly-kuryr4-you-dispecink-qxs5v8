@@ -1,0 +1,13 @@
+{
+  "version": "0.5.0",
+  "versionCode": 5,
+  "minimumVersionCode": 5,
+  "downloadUrl": "https://github.com/peegee1985/macaly-kuryr4-you-dispecink-qxs5v8/releases/download/driver-latest/kuryr4you-ridic.apk",
+  "releaseNotes": [
+    "Opravené nahrávání fotografií a podpisu POD",
+    "Nouzové dokončení zakázky bez POD po potvrzení řidičem",
+    "Vícezastávkové zakázky a navigace celé trasy",
+    "Zakázky seřazené podle fáze a nejbližší realizace",
+    "Nová ikona aplikace K4Y"
+  ]
+}

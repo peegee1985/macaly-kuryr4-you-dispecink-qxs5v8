@@ -1,0 +1,87 @@
+name: Android Driver Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/standalone-android-apk
+    paths:
+      - "mobile/**"
+      - "convex/**"
+      - "src/routes/ridic.pod.$rideId.tsx"
+      - ".github/workflows/android-driver-release.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-driver-release
+  cancel-in-progress: false
+
+jobs:
+  release-apk:
+    name: Build and publish signed driver APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      CI: "1"
+      EXPO_PUBLIC_CONVEX_URL: https://amicable-dogfish-440.eu-west-1.convex.cloud
+      EXPO_NO_TELEMETRY: "1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate TypeScript
+        run: npm run typecheck
+
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build unsigned production APK
+        working-directory: mobile/android
+        run: ./gradlew assembleRelease
+
+      - name: Prepare unsigned APK and signing tools
+        run: |
+          RELEASE_DIR="android/app/build/outputs/apk/release"
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          UNSIGNED_APK="$(find "$RELEASE_DIR" -maxdepth 1 -type f -name '*release*.apk' | head -1)"
+          test -n "$BUILD_TOOLS"
+          test -n "$UNSIGNED_APK"
+          cp "$UNSIGNED_APK" "$RELEASE_DIR/kuryr4you-ridic-unsigned.apk"
+          mkdir -p "$RELEASE_DIR/signing-tools/lib"
+          cp "$BUILD_TOOLS/apksigner" "$RELEASE_DIR/signing-tools/apksigner"
+          cp "$BUILD_TOOLS/zipalign" "$RELEASE_DIR/signing-tools/zipalign"
+          cp "$BUILD_TOOLS/lib/apksigner.jar" "$RELEASE_DIR/signing-tools/lib/apksigner.jar"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuryr4you-ridic-unsigned
+          path: |
+            mobile/android/app/build/outputs/apk/release/kuryr4you-ridic-unsigned.apk
+            mobile/android/app/build/outputs/apk/release/signing-tools
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,92 @@
+name: Android Customer Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - claude/github-access-m6bup7
+    paths:
+      - "mobile-customer/**"
+      - ".github/workflows/android-customer-release.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-customer-release
+  cancel-in-progress: false
+
+jobs:
+  release-apk:
+    name: Build and publish signed customer APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile-customer
+    env:
+      CI: "1"
+      EXPO_PUBLIC_CONVEX_URL: https://amicable-dogfish-440.eu-west-1.convex.cloud
+      EXPO_NO_TELEMETRY: "1"
+      # Pevný testovací klíč z repa — buildy jdou instalovat přes sebe.
+      K4Y_KEYSTORE_PATH: ${{ github.workspace }}/mobile-customer/k4y-test.keystore
+      K4Y_KEYSTORE_PASSWORD: k4ywear1
+      K4Y_KEY_ALIAS: k4ywear
+      K4Y_KEY_PASSWORD: k4ywear1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile-customer/package-lock.json
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate TypeScript
+        run: npm run typecheck
+
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build signed production APK
+        working-directory: mobile-customer/android
+        run: ./gradlew assembleRelease
+
+      - name: Collect APK
+        run: |
+          APK="$(find android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" kuryr4you-zakaznik.apk
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuryr4you-zakaznik-apk
+          path: mobile-customer/kuryr4you-zakaznik.apk
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish APK to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: customer-latest
+          name: Kuryr4You Zákazník
+          body: |
+            Zákaznická aplikace pro Android — instalace ze souboru APK.
+            Poznámky k verzi jsou v mobile-customer/release.json.
+          files: mobile-customer/kuryr4you-zakaznik.apk

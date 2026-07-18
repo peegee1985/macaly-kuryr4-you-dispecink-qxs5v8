@@ -1,0 +1,67 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'cz.kuryr4you.driver.watch'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "cz.kuryr4you.driver.watch"
+        minSdk 30
+        targetSdk 34
+        versionCode 2
+        versionName "0.2.0"
+    }
+
+    // Pevný testovací klíč — stejný jako u dispečerské wear aplikace,
+    // aby šly CI buildy instalovat přes sebe jako aktualizace.
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'k4ywear1'
+            keyAlias 'k4ywear'
+            keyPassword 'k4ywear1'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    buildFeatures {
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.5.14'
+    }
+}
+
+dependencies {
+    implementation platform('androidx.compose:compose-bom:2024.06.00')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.runtime:runtime'
+    implementation 'androidx.compose.foundation:foundation'
+    implementation 'androidx.wear.compose:compose-material:1.3.1'
+    implementation 'androidx.wear.compose:compose-foundation:1.3.1'
+    implementation 'androidx.wear:wear-input:1.1.0'
+    implementation 'androidx.activity:activity-compose:1.9.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.3'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
+}

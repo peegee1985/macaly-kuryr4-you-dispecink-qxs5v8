@@ -1,0 +1,78 @@
+name: Android Release AAB (Google Play)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/github-access-m6bup7
+    paths:
+      - ".github/workflows/android-release.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-aab:
+    name: Build production AAB via EAS
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_NO_TELEMETRY: "1"
+      CI: "1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Link EAS project
+        run: npx eas-cli@latest init --non-interactive --force
+
+      - name: Commit EAS project link locally (keeps git tree clean for EAS upload)
+        run: |
+          git config user.email "ci@kuryr4you.cz"
+          git config user.name "CI"
+          git add app.json
+          git diff --cached --quiet || git commit -m "chore: link EAS project (CI only, not pushed)"
+
+      - name: Build production AAB on EAS servers
+        run: |
+          npx eas-cli@latest build --platform android --profile production --non-interactive --wait --json > build-result.json
+          cat build-result.json
+
+      - name: Download AAB artifact
+        run: |
+          BUILD_URL=$(jq -r '.[0].artifacts.buildUrl // .artifacts.buildUrl' build-result.json)
+          echo "Artifact URL: $BUILD_URL"
+          curl -fL --retry 3 -o kuryr4you-ridic.aab "$BUILD_URL"
+          ls -la kuryr4you-ridic.aab
+
+      - name: Upload AAB as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuryr4you-ridic-aab
+          path: mobile/kuryr4you-ridic.aab
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish AAB to GitHub release for easy download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: driver-playstore-latest
+          name: Kuryr4You Řidič – Google Play AAB
+          body: |
+            Produkční app-bundle podepsaný EAS klíčem, připravený k nahrání do Google Play Console.
+            Vygenerováno workflow „Android Release AAB".
+          files: mobile/kuryr4you-ridic.aab
