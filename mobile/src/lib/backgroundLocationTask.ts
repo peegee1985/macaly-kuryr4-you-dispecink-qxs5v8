@@ -4,6 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import * as TaskManager from "expo-task-manager";
 
 import { api } from "./api";
+import { resolveSpeed } from "./speedEstimate";
 
 export const BACKGROUND_LOCATION_TASK = "k4y-driver-background-location";
 const LAST_LOCATION_KEY = "k4y_last_background_location";
@@ -20,15 +21,28 @@ async function sendLocation(position: Location.LocationObject) {
   const token = await SecureStore.getItemAsync(authStorageKey(convexUrl));
   if (!token) return;
 
+  const previous = await getStoredLastLocation();
+  const current = {
+    lat: position.coords.latitude,
+    lng: position.coords.longitude,
+    timestamp: position.timestamp,
+  };
+  // Android GPS čip u některých fixů nevrátí rychlost — dopočítáme ji
+  // z posunu vůči poslední známé poloze, pokud zařízení nic nedodalo.
+  const previousFix = previous?.timestamp
+    ? { lat: previous.lat, lng: previous.lng, timestamp: previous.timestamp }
+    : null;
+  const speed = resolveSpeed(position.coords.speed, current, previousFix);
+
   const payload = {
     lat: position.coords.latitude,
     lng: position.coords.longitude,
     accuracy: position.coords.accuracy ?? undefined,
-    speed: position.coords.speed ?? undefined,
+    speed,
     heading: position.coords.heading ?? undefined,
     isTracking: true,
   };
-  await SecureStore.setItemAsync(LAST_LOCATION_KEY, JSON.stringify(payload));
+  await SecureStore.setItemAsync(LAST_LOCATION_KEY, JSON.stringify({ ...payload, timestamp: position.timestamp }));
 
   const client = new ConvexHttpClient(convexUrl);
   client.setAuth(token);
@@ -54,8 +68,8 @@ export async function startBackgroundLocation() {
     accuracy: Location.Accuracy.High,
     timeInterval: 15_000,
     distanceInterval: 30,
-    deferredUpdatesInterval: 15_000,
-    deferredUpdatesDistance: 30,
+    // Bez dávkování (deferredUpdates*) — v dávkovém režimu Android GPS čip
+    // u řady fixů nevrací rychlost, takže dispečink viděl 0 km/h i za jízdy.
     pausesUpdatesAutomatically: false,
     foregroundService: {
       notificationTitle: "Kuryr4You • GPS zapnuto",
@@ -82,6 +96,7 @@ export async function getStoredLastLocation() {
       accuracy?: number;
       speed?: number;
       heading?: number;
+      timestamp?: number;
     };
   } catch {
     return null;
