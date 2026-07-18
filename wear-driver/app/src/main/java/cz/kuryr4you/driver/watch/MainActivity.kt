@@ -488,20 +488,18 @@ fun MyRideScreen(token: String, ride: MyRide, onDone: () -> Unit) {
 
         when (ride.status) {
             "assigned" -> item {
-                Chip(
-                    onClick = { advance("pickup") },
-                    label = { Text(if (working) "Odesílám…" else "Zahájit vyzvednutí") },
-                    colors = ChipDefaults.primaryChipColors(backgroundColor = AMBER),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                SlideToConfirm(
+                    label = if (working) "Odesílám…" else "Zahájit vyzvednutí",
+                    color = AMBER,
+                    enabled = !working,
+                ) { advance("pickup") }
             }
             "pickup" -> item {
-                Chip(
-                    onClick = { advance("transit") },
-                    label = { Text(if (working) "Odesílám…" else "Vyzvednuto → Na cestě") },
-                    colors = ChipDefaults.primaryChipColors(backgroundColor = GREEN),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                SlideToConfirm(
+                    label = if (working) "Odesílám…" else "Vyzvednuto → Na cestě",
+                    color = GREEN,
+                    enabled = !working,
+                ) { advance("transit") }
             }
             "transit" -> item {
                 Text(
@@ -614,12 +612,11 @@ fun AvailRideScreen(token: String, ride: AvailRide, onDone: () -> Unit) {
             }
         }
         item {
-            Chip(
-                onClick = { act("/api/v1/driver/accept") },
-                label = { Text(if (working) "Odesílám…" else "✓ Přijmout") },
-                colors = ChipDefaults.primaryChipColors(backgroundColor = GREEN),
-                modifier = Modifier.fillMaxWidth(),
-            )
+            SlideToConfirm(
+                label = if (working) "Odesílám…" else "Přijmout zakázku",
+                color = GREEN,
+                enabled = !working,
+            ) { act("/api/v1/driver/accept") }
         }
         item {
             Chip(
