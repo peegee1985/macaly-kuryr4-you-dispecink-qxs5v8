@@ -1,0 +1,60 @@
+name: Wear OS Driver APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/github-access-m6bup7
+      - main
+    paths:
+      - "wear-driver/**"
+      - ".github/workflows/wear-driver-apk.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-wear-driver:
+    name: Build Wear OS Driver APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: wear-driver
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk kuryr4you-wear-ridic.apk
+
+      - name: Upload APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuryr4you-wear-ridic-apk
+          path: wear-driver/kuryr4you-wear-ridic.apk
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish APK to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: wear-driver-latest
+          name: K4Y Řidič – Wear OS
+          body: |
+            Testovací APK řidičské aplikace pro hodinky (Wear OS 3+).
+            Párování: telefonní aplikace → Profil → Připojit hodinky (6místný kód).
+            Instalace z telefonu přes Wear Installer 2.
+          files: wear-driver/kuryr4you-wear-ridic.apk

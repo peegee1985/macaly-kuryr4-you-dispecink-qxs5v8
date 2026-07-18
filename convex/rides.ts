@@ -1,7 +1,8 @@
 import { v } from "convex/values"
 import { mutation, query, internalMutation, internalQuery, action } from "./_generated/server"
+import type { MutationCtx } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
-import type { Id } from "./_generated/dataModel"
+import type { Doc, Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
 
 // ─── Rating ────────────────────────────────────────────────────────────────
@@ -668,7 +669,17 @@ export const updateRideStatus = mutation({
     if (!authId) throw new Error("Nejste přihlášeni")
     const user = await ctx.db.get(authId as Id<"users">)
     if (!user) throw new Error("Profil nenalezen")
+    await updateRideStatusCore(ctx, user, args)
+    return null
+  },
+})
 
+// Sdílená logika změny stavu — používá ji mutace výše i hodinkové API (wear.ts)
+export async function updateRideStatusCore(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  args: { rideId: Id<"rides">; status: "pickup" | "transit" | "delivered" | "cancelled" },
+) {
     const ride = await ctx.db.get(args.rideId)
     if (!ride) throw new Error("Zakázka nenalezena")
 
@@ -750,10 +761,7 @@ export const updateRideStatus = mutation({
       trackingToken: ride.trackingToken,
       status: args.status,
     })
-
-    return null
-  },
-})
+}
 
 // Dispatcher: update ride details
 export const updateRide = mutation({
@@ -1463,14 +1471,20 @@ export const selfAssignRide = mutation({
     if (!authId) throw new Error("Nepřihlášen")
     const user = await ctx.db.get(authId as Id<"users">)
     if (!user || user.role !== "driver") throw new Error("Pouze řidiči mohou přijímat zákazky")
+    await selfAssignRideCore(ctx, user, args.rideId)
+    return null
+  },
+})
 
-    const ride = await ctx.db.get(args.rideId)
+// Sdílená logika přijetí zakázky — mutace výše i hodinkové API (wear.ts)
+export async function selfAssignRideCore(ctx: MutationCtx, user: Doc<"users">, rideId: Id<"rides">) {
+    const ride = await ctx.db.get(rideId)
     if (!ride) throw new Error("Zákazka nenalezena")
     if (ride.status !== "approved") throw new Error("Zákazka není ve stavu k přijetí")
     if (ride.driverId) throw new Error("Zákazka už má přiřazeného řidiče")
 
-    await ctx.db.patch(args.rideId, {
-      driverId: authId as Id<"users">,
+    await ctx.db.patch(rideId, {
+      driverId: user._id,
       status: "assigned",
     })
 
@@ -1478,7 +1492,7 @@ export const selfAssignRide = mutation({
     const rejection = await ctx.db
       .query("rideRejections")
       .withIndex("by_driver_ride", (q) =>
-        q.eq("driverId", authId as Id<"users">).eq("rideId", args.rideId)
+        q.eq("driverId", user._id).eq("rideId", rideId)
       )
       .first()
     if (rejection) await ctx.db.delete(rejection._id)
@@ -1496,9 +1510,7 @@ export const selfAssignRide = mutation({
     }
 
     console.log(`Driver ${user.name} self-assigned ride ${ride.rideNumber}`)
-    return null
-  },
-})
+}
 
 // Driver: reject a ride (hide from Volné, store in Odmítnuté)
 export const rejectRide = mutation({
@@ -1508,29 +1520,33 @@ export const rejectRide = mutation({
     if (!authId) throw new Error("Nepřihlášen")
     const user = await ctx.db.get(authId as Id<"users">)
     if (!user || user.role !== "driver") throw new Error("Pouze řidiči mohou odmítat zákazky")
+    await rejectRideCore(ctx, user, args.rideId)
+    return null
+  },
+})
 
+// Sdílená logika odmítnutí zakázky — mutace výše i hodinkové API (wear.ts)
+export async function rejectRideCore(ctx: MutationCtx, user: Doc<"users">, rideId: Id<"rides">) {
     // Check ride still available
-    const ride = await ctx.db.get(args.rideId)
+    const ride = await ctx.db.get(rideId)
     if (!ride || ride.status !== "approved") throw new Error("Zákazka není dostupná")
 
     // Prevent duplicate
     const existing = await ctx.db
       .query("rideRejections")
       .withIndex("by_driver_ride", (q) =>
-        q.eq("driverId", authId as Id<"users">).eq("rideId", args.rideId)
+        q.eq("driverId", user._id).eq("rideId", rideId)
       )
       .first()
-    if (existing) return null
+    if (existing) return
 
     await ctx.db.insert("rideRejections", {
-      driverId: authId as Id<"users">,
-      rideId: args.rideId,
+      driverId: user._id,
+      rideId,
       rejectedAt: Date.now(),
     })
     console.log(`Driver ${user.name} rejected ride ${ride.rideNumber}`)
-    return null
-  },
-})
+}
 
 // Driver: un-reject a ride (take from Odmítnuté back to Volné or self-assign)
 export const unRejectRide = mutation({
