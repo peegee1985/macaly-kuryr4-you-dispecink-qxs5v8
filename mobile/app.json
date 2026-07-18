@@ -3,7 +3,7 @@
     "name": "Kuryr4You Řidič",
     "slug": "kuryr4you-ridic",
     "scheme": "kuryr4you",
-    "version": "0.1.0",
+    "version": "0.5.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0F111A",
@@ -11,7 +11,7 @@
     "icon": "./assets/icon.png",
     "android": {
       "package": "cz.kuryr4you.driver",
-      "versionCode": 1,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0F111A"
