@@ -97,7 +97,7 @@ function CustomerApp({ user, onSignOut }: { user: CustomerUser; onSignOut: () =>
           />
         ) : null}
         {tab === "rides" ? <RidesScreen onOpenRide={setSelectedRide} onNewRide={() => openNew()} /> : null}
-        {tab === "new" ? <NewRideScreen initialTemplate={template} onCreated={() => { setTemplate(undefined); setTab("rides"); }} /> : null}
+        {tab === "new" ? <NewRideScreen user={user} initialTemplate={template} onCreated={() => { setTemplate(undefined); setTab("rides"); }} /> : null}
         {tab === "more" ? (
           <MoreScreen
             user={user}
