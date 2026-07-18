@@ -23,6 +23,7 @@ function CustomerProfilePage() {
   const [corporateLoading, setCorporateLoading] = useState(false)
   const push = usePushNotifications()
   const [showCorporateForm, setShowCorporateForm] = useState(false)
+  const [paymentPrefLoading, setPaymentPrefLoading] = useState(false)
 
   // Password change state
   type PwdStep = 'idle' | 'sent' | 'done'
@@ -207,11 +208,58 @@ function CustomerProfilePage() {
           </div>
 
           {me.corporateStatus === 'approved' && me.companyName && (
-            <div className="text-sm space-y-1 text-muted-foreground">
+            <div className="text-sm space-y-1 text-muted-foreground mb-4">
               <p><span className="text-foreground font-medium">{me.companyName}</span></p>
               {me.companyAddress && <p>{me.companyAddress}</p>}
               {me.companyIco && <p>IČO: {me.companyIco}</p>}
               {me.companyDic && <p>DIČ: {me.companyDic}</p>}
+            </div>
+          )}
+
+          {me.corporateStatus === 'approved' && (
+            <div className="border border-border rounded-lg p-4">
+              <p className="text-sm font-medium text-foreground mb-1">Výchozí způsob platby</p>
+              <p className="text-xs text-muted-foreground mb-3">
+                Platí pro objednávky z mobilní aplikace. Dispečer může vždy poslat platební odkaz ručně.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  disabled={paymentPrefLoading}
+                  onClick={async () => {
+                    if (me.paymentPreference === 'invoice' || !me.paymentPreference) return
+                    setPaymentPrefLoading(true)
+                    try { await updateProfile({ paymentPreference: 'invoice' }) } finally { setPaymentPrefLoading(false) }
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                    (me.paymentPreference ?? 'invoice') === 'invoice'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-card border-border text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Faktura (14 dnů)
+                </button>
+                <button
+                  disabled={paymentPrefLoading}
+                  onClick={async () => {
+                    if (me.paymentPreference === 'card') return
+                    setPaymentPrefLoading(true)
+                    try { await updateProfile({ paymentPreference: 'card' }) } finally { setPaymentPrefLoading(false) }
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                    me.paymentPreference === 'card'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-card border-border text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                  Platba kartou
+                </button>
+              </div>
             </div>
           )}
 

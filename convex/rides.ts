@@ -3,7 +3,7 @@ import { mutation, query, internalMutation, internalQuery, action, internalActio
 import type { MutationCtx } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import type { Doc, Id } from "./_generated/dataModel"
-import { internal } from "./_generated/api"
+import { api, internal } from "./_generated/api"
 
 // ─── Rating ────────────────────────────────────────────────────────────────
 
@@ -285,6 +285,9 @@ export const createRide = mutation({
     // Cena z AI nacenění (mobilní aplikace) — po vytvoření se automaticky
     // vygeneruje platební odkaz
     price: v.optional(v.number()),
+    // Pokud true, přeskočí automatické naplánování platebního odkazu
+    // (používá createRideAndCheckout, který ho vytvoří synchronně)
+    _skipAutoPayment: v.optional(v.boolean()),
   },
   returns: v.id("rides"),
   handler: async (ctx, args) => {
@@ -326,8 +329,12 @@ export const createRide = mutation({
 
     console.log(`Ride created: ${rideId}`)
 
-    // Naceněná objednávka (z aplikace) → rovnou vygenerovat platební odkaz
-    if (args.price && args.price > 0) {
+    // Naceněná objednávka → rovnou vygenerovat platební odkaz,
+    // pokud zákazník není firemní nebo má nastavenou preferenci "card"
+    // a pokud volající nepožaduje synchronní vytvoření (_skipAutoPayment = true)
+    const isCorporateOnInvoice =
+      user.corporateStatus === "approved" && user.paymentPreference !== "card"
+    if (args.price && args.price > 0 && !isCorporateOnInvoice && !args._skipAutoPayment) {
       await ctx.scheduler.runAfter(0, internal.rides.autoCreatePaymentLink, { rideId })
     }
 
@@ -1720,6 +1727,12 @@ export const autoCreatePaymentLink = internalAction({
     if (!data || !data.ride.price || data.ride.price <= 0) return null
     const { ride, customer } = data
 
+    // Obranná vrstva: firemní zákazník s preferencí faktura → přeskočit
+    if (customer.corporateStatus === "approved" && customer.paymentPreference !== "card") {
+      console.log("[rides] autoCreatePaymentLink skipped — corporate invoice preference", ride.rideNumber)
+      return null
+    }
+
     const result = await ctx.runAction(internal.stripe.createPaymentLink, {
       rideId: args.rideId,
       rideNumber: ride.rideNumber,
@@ -1734,6 +1747,81 @@ export const autoCreatePaymentLink = internalAction({
       console.error("[rides] autoCreatePaymentLink failed", ride.rideNumber, result.error)
     }
     return null
+  },
+})
+
+// Public action: vytvoří zásilku + synchronně vygeneruje Stripe checkout.
+// Volá se z webového formuláře pro běžné (nefiremní) zákazníky.
+// Vrací rideId a URL platební brány, na kterou přesměrujeme zákazníka.
+export const createRideAndCheckout = action({
+  args: {
+    pickupAddress: v.string(),
+    pickupLat: v.optional(v.number()),
+    pickupLng: v.optional(v.number()),
+    pickupContactName: v.string(),
+    pickupContactPhone: v.string(),
+    requestedPickupAt: v.number(),
+    deliveryAddress: v.string(),
+    deliveryLat: v.optional(v.number()),
+    deliveryLng: v.optional(v.number()),
+    deliveryContactName: v.string(),
+    deliveryContactPhone: v.string(),
+    requestedDeliveryAt: v.number(),
+    cargoType: v.union(
+      v.literal("envelope"), v.literal("parcel"), v.literal("box"),
+      v.literal("pallet"), v.literal("other"),
+    ),
+    cargoDescription: v.string(),
+    weight: v.optional(v.number()),
+    quantity: v.number(),
+    notes: v.optional(v.string()),
+    price: v.number(),
+  },
+  returns: v.object({
+    rideId: v.id("rides"),
+    checkoutUrl: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const { price, ...rideArgs } = args
+
+    // Vytvoř zásilku s cenou — přeskočíme asynchronní scheduler,
+    // platební odkaz vytvoříme hned níže synchronně.
+    const rideId = await ctx.runMutation(api.rides.createRide, {
+      ...rideArgs,
+      price,
+      _skipAutoPayment: true,
+    })
+
+    console.log("[createRideAndCheckout] ride created:", rideId)
+
+    // Načti zásilku + zákazníka
+    const data = await ctx.runQuery(internal.rides.getAutoPaymentData, { rideId })
+    if (!data || !data.ride.price || data.ride.price <= 0) {
+      console.log("[createRideAndCheckout] no price, skipping checkout")
+      return { rideId }
+    }
+
+    const { ride, customer } = data
+
+    // Synchronní Stripe checkout
+    const result = await ctx.runAction(internal.stripe.createPaymentLink, {
+      rideId,
+      rideNumber: ride.rideNumber,
+      price: ride.price,
+      currency: ride.currency ?? "CZK",
+      customerEmail: customer.email,
+      customerName: customer.name ?? customer.email,
+      pickupAddress: ride.pickupAddress,
+      deliveryAddress: ride.deliveryAddress,
+    })
+
+    if (!result.success) {
+      console.error("[createRideAndCheckout] stripe failed:", result.error)
+      return { rideId }
+    }
+
+    console.log("[createRideAndCheckout] checkout URL:", result.paymentUrl)
+    return { rideId, checkoutUrl: result.paymentUrl }
   },
 })
 

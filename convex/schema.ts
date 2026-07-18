@@ -21,6 +21,8 @@ export default defineSchema({
     vehicleType: v.optional(v.string()),
     vehiclePlate: v.optional(v.string()),
     driverNotes: v.optional(v.string()),
+    // Payment preference for corporate customers: "invoice" (default) or "card"
+    paymentPreference: v.optional(v.union(v.literal("invoice"), v.literal("card"))),
     // Receipts: admin can enable/disable per customer (null = use default)
     receiptEnabled: v.optional(v.boolean()),
     // Driver notification preferences (undefined = default true)

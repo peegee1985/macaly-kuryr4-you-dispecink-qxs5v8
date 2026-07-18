@@ -86,6 +86,7 @@ function HomePage() {
             <a href="#sluzby" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Služby</a>
             <a href="#o-nas" className="text-sm text-muted-foreground hover:text-foreground transition-colors">O nás</a>
             <Link to="/jak-to-funguje" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Jak to funguje?</Link>
+            <a href="#aplikace" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Android App</a>
             <a href="#kontakt" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Kontakt</a>
           </div>
 
@@ -579,6 +580,269 @@ function HomePage() {
         </div>
       </section>
 
+      {/* Android App Download */}
+      <section id="aplikace" className="py-20 border-t border-border" style={{ background: 'hsl(222 20% 7%)' }}>
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex flex-col lg:flex-row items-center gap-12">
+
+            {/* Left: phone mockup */}
+            <div className="flex-shrink-0 flex items-center justify-center">
+              <div className="relative">
+                {/* Glow */}
+                <div className="absolute inset-0 rounded-[2.5rem] blur-3xl opacity-20" style={{ background: 'hsl(142 72% 45%)' }} />
+                {/* Phone shell */}
+                <div className="relative w-52 rounded-[2.5rem] border-4 border-border overflow-hidden shadow-2xl" style={{ background: 'hsl(222 24% 10%)' }}>
+                  {/* Notch */}
+                  <div className="flex justify-center pt-3 pb-2 px-4" style={{ background: 'hsl(222 24% 8%)' }}>
+                    <div className="w-16 h-1 rounded-full bg-border" />
+                  </div>
+                  {/* Screen content */}
+                  <div className="px-4 pb-6 pt-4 space-y-3">
+                    {/* App icon + name */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center flex-shrink-0">
+                        <svg className="w-6 h-6 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="text-xs font-heading font-bold text-foreground leading-none">KURÝR4YOU</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">Zákaznická aplikace</div>
+                      </div>
+                    </div>
+                    {/* Fake order card */}
+                    <div className="rounded-lg p-2.5 border border-border" style={{ background: 'hsl(222 24% 13%)' }}>
+                      <div className="text-[10px] text-muted-foreground mb-1.5">Aktivní zásilka</div>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                        <div className="text-[10px] text-foreground">Václavské nám. 1</div>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                        <div className="text-[10px] text-foreground">Náměstí Míru 5</div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'hsl(142 72% 45% / 0.15)', color: 'hsl(142 72% 55%)' }}>Na cestě</span>
+                        <span className="text-[9px] text-muted-foreground">K260615-0042</span>
+                      </div>
+                    </div>
+                    {/* Map placeholder */}
+                    <div className="rounded-lg overflow-hidden" style={{ background: 'hsl(222 24% 13%)', height: '70px' }}>
+                      <div className="w-full h-full flex items-center justify-center">
+                        <svg className="w-8 h-8 text-primary/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
+                      </div>
+                    </div>
+                    {/* Buttons */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div className="rounded py-1.5 text-center text-[10px] font-bold" style={{ background: 'hsl(38 92% 50%)', color: 'hsl(222 24% 8%)' }}>Nová zásilka</div>
+                      <div className="rounded py-1.5 text-center text-[10px] font-medium border border-border text-muted-foreground">Sledovat</div>
+                    </div>
+                  </div>
+                  {/* Home bar */}
+                  <div className="flex justify-center pb-3">
+                    <div className="w-20 h-1 rounded-full bg-border" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: text + CTA */}
+            <div className="flex-1 max-w-xl">
+              <div className="inline-flex items-center gap-2 mb-4 px-3 py-1.5 rounded-full border text-xs font-medium" style={{ borderColor: 'hsl(142 72% 45% / 0.4)', color: 'hsl(142 72% 55%)', background: 'hsl(142 72% 45% / 0.08)' }}>
+                {/* Android icon */}
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17.523 15.341A5.98 5.98 0 0018 13c0-3.314-2.686-6-6-6S6 9.686 6 13c0 .807.16 1.577.446 2.282L4.1 18.13A.75.75 0 004.8 19.2l2.714-1.357A5.97 5.97 0 0012 19a5.97 5.97 0 004.486-2.157l2.714 1.357a.75.75 0 00.7-1.07l-2.377-2.789zM9.5 8.5a.5.5 0 100-1 .5.5 0 000 1zm5 0a.5.5 0 100-1 .5.5 0 000 1zm-7 4.5a.5.5 0 100-1 .5.5 0 000 1zm9 0a.5.5 0 100-1 .5.5 0 000 1zM8.182 4.5l1.06-1.872A.5.5 0 008.804 2h-.01a.5.5 0 00-.433.25L7.07 4h.001a5.99 5.99 0 00-3.04 1.63l-.9-.9a.5.5 0 00-.707.707l1 1c-.277.376-.517.78-.713 1.213a5.977 5.977 0 00-.71 2.85.5.5 0 001 0 4.99 4.99 0 011.09-3.13L3.94 7h.01a.5.5 0 00.354-.146l.818-.818A5.977 5.977 0 0112 4.5h-.001zm3.636 0H12A5.977 5.977 0 0115.878 6.036l.818.818A.5.5 0 0017.05 7h.01l-.15.37A4.99 4.99 0 0118 10.5a.5.5 0 001 0 5.977 5.977 0 00-.71-2.85 5.977 5.977 0 00-.713-1.213l1-1a.5.5 0 00-.707-.707l-.9.9A5.99 5.99 0 0013.207 4h.001l-1.29-2.25A.5.5 0 0011.207 2h-.01a.5.5 0 00-.433.248L9.473 4.5h2.345z" />
+                </svg>
+                Android aplikace
+              </div>
+              <h2 className="font-heading text-4xl md:text-5xl font-black uppercase leading-tight mb-4">
+                Objednávejte<br />
+                <span className="text-primary">z mobilu</span>
+              </h2>
+              <p className="text-muted-foreground text-lg mb-6">
+                Stáhněte si zákaznickou aplikaci pro Android a mějte kurýrní služby vždy po ruce. Objednávejte, sledujte zásilky v reálném čase a dostávejte push notifikace.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {[
+                  'Objednávka kurýra za 30 sekund',
+                  'Sledování zásilky na mapě v reálném čase',
+                  'Push notifikace o stavu doručení',
+                  'Historie zásilek a účtenek',
+                  'Přihlásit se stejným účtem jako na webu',
+                ].map(item => (
+                  <li key={item} className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" style={{ color: 'hsl(142 72% 50%)' }}>
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                    </svg>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+
+              {/* Download button */}
+              <div className="flex flex-col sm:flex-row gap-4 items-start">
+                <a
+                  href="https://github.com/peegee1985/macaly-kuryr4-you-dispecink-qxs5v8/releases/download/customer-latest/kuryr4you-zakaznik.apk"
+                  className="inline-flex items-center gap-3 px-7 py-4 rounded-xl font-heading font-bold text-base transition-all hover:scale-105 active:scale-100"
+                  style={{ background: 'hsl(142 72% 40%)', color: '#fff' }}
+                >
+                  {/* Android robot icon */}
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M1.539 12.979a.99.99 0 01-1-1.021V8.021c0-.568.449-1.021 1-.979a1 1 0 011 1.021v3.937a1 1 0 01-1 .979zM22.461 12.979a.99.99 0 01-1-.979V8.063a1 1 0 011-1.021c.551-.042 1 .411 1 .979v3.937c0 .569-.449 1.021-1 1.021zM15.9 2.079l1.06-1.62a.253.253 0 00-.07-.35.25.25 0 00-.35.07L15.44 1.75a6.46 6.46 0 00-3.44-.96 6.46 6.46 0 00-3.44.96L7.46.179a.25.25 0 00-.35-.07.253.253 0 00-.07.35l1.06 1.62A6.23 6.23 0 004.96 6.5H19.04a6.23 6.23 0 00-3.14-4.421zM9.5 5a.75.75 0 110-1.5A.75.75 0 019.5 5zm5 0a.75.75 0 110-1.5.75.75 0 010 1.5zM4.96 7.5v10.5c0 .55.45 1 1 1h1v3a1 1 0 002 0V19h6v3a1 1 0 002 0V19h1c.55 0 1-.45 1-1V7.5H4.96z" />
+                  </svg>
+                  Stáhnout pro Android (.apk)
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </a>
+              </div>
+
+              {/* Installation note */}
+              <div className="mt-5 flex items-start gap-2.5 text-xs text-muted-foreground">
+                <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>
+                  Aplikace je distribuována mimo Google Play. Při instalaci povolte v nastavení telefonu&nbsp;
+                  <strong className="text-foreground/60">„Instalovat z neznámých zdrojů"</strong>
+                  &nbsp;(Nastavení → Aplikace → Speciální oprávnění).
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Wear OS sekce */}
+      <section id="wear-os" className="py-20 border-t border-border" style={{ background: 'hsl(222 22% 6%)' }}>
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex flex-col lg:flex-row-reverse items-center gap-12">
+
+            {/* Right (visually left on desktop): watch mockup group */}
+            <div className="flex-shrink-0 flex items-end justify-center gap-4 relative">
+
+              {/* Ambient glow */}
+              <div className="absolute inset-0 rounded-full blur-3xl opacity-15 pointer-events-none" style={{ background: 'radial-gradient(circle, hsl(38 92% 50%) 0%, hsl(38 92% 50% / 0) 70%)' }} />
+
+              {/* Watch — nová zakázka (příjem) */}
+              <div className="relative flex-shrink-0" style={{ zIndex: 2 }}>
+                {/* Outer bezel */}
+                <div className="relative w-44 h-44 rounded-full border-4 flex items-center justify-center shadow-2xl"
+                  style={{ borderColor: 'hsl(222 20% 22%)', background: 'hsl(222 24% 8%)' }}>
+                  {/* Crown */}
+                  <div className="absolute right-[-8px] top-1/2 -translate-y-1/2 w-2 h-7 rounded-full border border-border" style={{ background: 'hsl(222 20% 20%)' }} />
+                  {/* Inner rim */}
+                  <div className="absolute inset-1 rounded-full border border-border/30" style={{ background: 'hsl(222 24% 9%)' }} />
+                  {/* Screen */}
+                  <div className="relative z-10 w-36 h-36 rounded-full overflow-hidden flex flex-col items-center justify-center px-3 text-center"
+                    style={{ background: 'hsl(222 28% 10%)' }}>
+                    {/* Top label */}
+                    <div className="text-[8px] font-bold uppercase tracking-widest mb-1" style={{ color: 'hsl(38 92% 50%)' }}>KURÝR4YOU</div>
+                    {/* Icon */}
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center mb-1.5" style={{ background: 'hsl(38 92% 50% / 0.15)' }}>
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{ color: 'hsl(38 92% 50%)' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                      </svg>
+                    </div>
+                    <div className="text-[10px] font-bold text-foreground leading-tight mb-0.5">Nová zakázka</div>
+                    <div className="text-[8px] text-muted-foreground leading-tight mb-2.5">Václavské nám. → Žižkov</div>
+                    {/* Accept / Reject */}
+                    <div className="flex gap-2">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'hsl(142 72% 40% / 0.25)', border: '1px solid hsl(142 72% 40% / 0.5)' }}>
+                        <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" style={{ color: 'hsl(142 72% 55%)' }}>
+                          <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'hsl(0 70% 45% / 0.2)', border: '1px solid hsl(0 70% 45% / 0.4)' }}>
+                        <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" style={{ color: 'hsl(0 70% 60%)' }}>
+                          <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Watch — na cestě (status) */}
+              <div className="relative flex-shrink-0 mb-8" style={{ zIndex: 1 }}>
+                <div className="relative w-36 h-36 rounded-full border-4 flex items-center justify-center shadow-xl"
+                  style={{ borderColor: 'hsl(222 20% 20%)', background: 'hsl(222 24% 7%)' }}>
+                  <div className="absolute right-[-7px] top-1/2 -translate-y-1/2 w-1.5 h-6 rounded-full border border-border/60" style={{ background: 'hsl(222 20% 18%)' }} />
+                  <div className="absolute inset-1 rounded-full border border-border/20" style={{ background: 'hsl(222 24% 8%)' }} />
+                  <div className="relative z-10 w-28 h-28 rounded-full overflow-hidden flex flex-col items-center justify-center px-2 text-center"
+                    style={{ background: 'hsl(222 28% 9%)' }}>
+                    {/* Animated pulse dot */}
+                    <div className="w-2 h-2 rounded-full mb-2 animate-pulse" style={{ background: 'hsl(142 72% 50%)' }} />
+                    <div className="text-[8px] font-bold uppercase tracking-widest mb-0.5" style={{ color: 'hsl(142 72% 55%)' }}>Na cestě</div>
+                    <div className="text-[9px] font-bold text-foreground leading-tight mb-0.5">K260615-0042</div>
+                    <div className="text-[7px] text-muted-foreground">Žižkov, Praha 3</div>
+                    {/* Navigation icon */}
+                    <div className="mt-2 w-6 h-6 rounded-full flex items-center justify-center" style={{ background: 'hsl(210 90% 50% / 0.2)' }}>
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor" style={{ color: 'hsl(210 90% 65%)' }}>
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Connecting line hint */}
+              <div className="absolute bottom-[-24px] left-1/2 -translate-x-1/2 text-[9px] text-muted-foreground/50 tracking-widest uppercase">Wear OS</div>
+            </div>
+
+            {/* Left: text */}
+            <div className="flex-1 max-w-xl">
+              <div className="inline-flex items-center gap-2 mb-4 px-3 py-1.5 rounded-full border text-xs font-medium" style={{ borderColor: 'hsl(38 92% 50% / 0.4)', color: 'hsl(38 92% 60%)', background: 'hsl(38 92% 50% / 0.08)' }}>
+                {/* Wear OS / watch icon */}
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <circle cx="12" cy="12" r="7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 3h6M9 21h6" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l2 2" />
+                </svg>
+                Wear OS aplikace pro řidiče
+              </div>
+              <h2 className="font-heading text-4xl md:text-5xl font-black uppercase leading-tight mb-4">
+                Zakázky<br />
+                <span style={{ color: 'hsl(38 92% 50%)' }}>na zápěstí</span>
+              </h2>
+              <p className="text-muted-foreground text-lg mb-6">
+                Řidiči mohou přijímat zakázky, sledovat stav doručení a spouštět navigaci přímo z hodinek Wear OS — bez nutnosti sahat na telefon.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {[
+                  'Přijmout nebo odmítnout zakázku jedním klepnutím',
+                  'Stav doručení — Vyzvednutí → Na cestě → Doručeno',
+                  'Spuštění navigace přímo z hodinek',
+                  'Push notifikace o nových zakázkách',
+                  'Párování s telefonem přes 6místný kód',
+                ].map(item => (
+                  <li key={item} className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" style={{ color: 'hsl(38 92% 50%)' }}>
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                    </svg>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              {/* Pairing note */}
+              <div className="flex items-start gap-3 p-4 rounded-xl border border-border/50" style={{ background: 'hsl(222 24% 10%)' }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: 'hsl(38 92% 50% / 0.12)' }}>
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{ color: 'hsl(38 92% 55%)' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-foreground mb-0.5">Snadné spárování</div>
+                  <div className="text-xs text-muted-foreground">V aplikaci řidiče na telefonu otevřete Profil → Hodinky → vygenerujete 6místný kód a zadáte ho na hodinkách. Hotovo.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Login portals */}
       <section className="py-16 border-t border-border">
         <div className="max-w-6xl mx-auto px-4 text-center">
@@ -662,6 +926,13 @@ function HomePage() {
                   <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
                   Registrace
                 </Link>
+                <a
+                  href="https://github.com/peegee1985/macaly-kuryr4-you-dispecink-qxs5v8/releases/download/customer-latest/kuryr4you-zakaznik.apk"
+                  className="flex items-center gap-2 hover:text-foreground transition-colors"
+                >
+                  <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  Android aplikace
+                </a>
               </div>
             </div>
 
