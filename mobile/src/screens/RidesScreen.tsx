@@ -6,6 +6,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { RideCard } from "../components/RideCard";
 import { AppButton, Card, EmptyState, PageHeader, Screen } from "../components/ui";
 import { api } from "../lib/api";
+import { sortActiveRides, sortAvailableRides, sortRideHistory } from "../lib/rideSort";
 import { colors, radius, spacing } from "../theme";
 import type { Ride } from "../types";
 
@@ -19,9 +20,11 @@ export function RidesScreen({ onOpenRide }: { onOpenRide: (ride: Ride) => void }
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const shown = useMemo(() => {
-    if (filter === "available") return available ?? [];
-    if (filter === "history") return (rides ?? []).filter((ride) => ["delivered", "cancelled", "failed"].includes(ride.status));
-    return (rides ?? []).filter((ride) => !["delivered", "cancelled", "failed"].includes(ride.status));
+    if (filter === "available") return sortAvailableRides(available ?? []);
+    if (filter === "history") {
+      return sortRideHistory((rides ?? []).filter((ride) => ["delivered", "cancelled", "failed"].includes(ride.status)));
+    }
+    return sortActiveRides((rides ?? []).filter((ride) => !["delivered", "cancelled", "failed"].includes(ride.status)));
   }, [available, filter, rides]);
 
   const reject = (ride: Ride) => {

@@ -3,6 +3,12 @@ import * as Location from "expo-location";
 import { useMutation, useQuery } from "convex/react";
 
 import { api } from "../lib/api";
+import {
+  getStoredLastLocation,
+  isBackgroundLocationRunning,
+  startBackgroundLocation,
+  stopBackgroundLocation,
+} from "../lib/backgroundLocationTask";
 
 type LastLocation = {
   lat: number;
@@ -15,7 +21,6 @@ type LastLocation = {
 export function useGpsTracking() {
   const updateLocation = useMutation(api.gps.updateLocation);
   const serverStatus = useQuery(api.gps.getMyGPSStatus, {});
-  const subscription = useRef<Location.LocationSubscription | null>(null);
   const lastLocation = useRef<LastLocation | null>(null);
   const [tracking, setTracking] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -37,7 +42,7 @@ export function useGpsTracking() {
   );
 
   const start = useCallback(async () => {
-    if (subscription.current) return;
+    if (tracking) return;
     setBusy(true);
     setError(null);
     try {
@@ -46,38 +51,33 @@ export function useGpsTracking() {
         throw new Error("Pro sdílení polohy je potřeba povolit GPS.");
       }
 
+      const backgroundPermission = await Location.requestBackgroundPermissionsAsync();
+      if (backgroundPermission.status !== "granted") {
+        throw new Error("Pro GPS během zamčené obrazovky povolte polohu vždy.");
+      }
+
       const first = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       await sendLocation(first.coords, true);
-
-      subscription.current = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 15_000,
-          distanceInterval: 30,
-        },
-        (position) => {
-          void sendLocation(position.coords, true).catch(() => {
-            setError("Polohu se nepodařilo odeslat dispečinku.");
-          });
-        },
-      );
+      await startBackgroundLocation();
       setTracking(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "GPS se nepodařilo spustit.");
     } finally {
       setBusy(false);
     }
-  }, [sendLocation]);
+  }, [sendLocation, tracking]);
 
   const stop = useCallback(async () => {
     setBusy(true);
     setError(null);
-    subscription.current?.remove();
-    subscription.current = null;
     setTracking(false);
 
     try {
+      await stopBackgroundLocation();
       let current = lastLocation.current;
+      if (!current) {
+        current = await getStoredLastLocation();
+      }
       if (!current) {
         const known = await Location.getLastKnownPositionAsync();
         if (known) {
@@ -102,7 +102,9 @@ export function useGpsTracking() {
     if (serverStatus?.adminStopRequested && tracking) void stop();
   }, [serverStatus?.adminStopRequested, stop, tracking]);
 
-  useEffect(() => () => subscription.current?.remove(), []);
+  useEffect(() => {
+    void isBackgroundLocationRunning().then(setTracking).catch(() => undefined);
+  }, []);
 
   return { tracking, busy, error, start, stop, serverStatus };
 }

@@ -889,12 +889,15 @@ export const submitPOD = mutation({
     if (!ride) throw new Error("Zakázka nenalezena")
     // Drivers can only submit POD for their own assigned rides
     if (user.role === "driver" && ride.driverId !== user._id) throw new Error("Zakázka nenalezena")
+    if (!args.recipientName?.trim()) throw new Error("Zadejte jméno příjemce")
+    if (args.photoIds.length === 0) throw new Error("Přidejte alespoň jednu fotografii doručení")
+    if (!args.signatureId) throw new Error("Podpis příjemce je povinný")
 
     await ctx.db.patch(args.rideId, {
       podPhotoIds: args.photoIds,
       podSignatureId: args.signatureId,
       podDeliveredAt: Date.now(),
-      podRecipientName: args.recipientName,
+      podRecipientName: args.recipientName.trim(),
       status: "delivered",
       codCollected: args.codCollected ?? false,
     })
