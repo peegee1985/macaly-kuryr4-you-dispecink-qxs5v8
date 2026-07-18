@@ -301,4 +301,126 @@ http.route({
   }),
 })
 
+// ─── Hodinková aplikace řidiče (Wear OS) ──────────────────────────────────────
+
+async function authWearDriver(ctx: { runQuery: Function; runMutation: Function }, req: Request) {
+  const authHeader = req.headers.get("Authorization") || req.headers.get("authorization") || ""
+  if (!authHeader.startsWith("Bearer ")) return null
+  const rawToken = authHeader.slice(7).trim()
+  if (!rawToken.startsWith("k4drv_")) return null
+  const hash = await hashApiKey(rawToken)
+  const driver = await ctx.runQuery(internal.wear.validateWearToken, { hash })
+  if (!driver) return null
+  await ctx.runMutation(internal.wear.touchWearToken, { hash })
+  return driver as { driverId: string; name: string }
+}
+
+// POST /api/v1/driver/pair — výměna 6místného kódu za trvalý token
+http.route({
+  path: "/api/v1/driver/pair",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    const body = await req.json().catch(() => null)
+    const code = typeof body?.code === "string" ? body.code.trim() : ""
+    if (!/^\d{6}$/.test(code)) return jsonResp({ error: "Neplatný formát kódu" }, 400)
+
+    const bytes = new Uint8Array(32)
+    crypto.getRandomValues(bytes)
+    const token = "k4drv_" + Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("")
+    const tokenHash = await hashApiKey(token)
+
+    const result = await ctx.runMutation(internal.wear.redeemPairingCode, { code, tokenHash })
+    if (!result) return jsonResp({ error: "Kód je neplatný nebo vypršel" }, 400)
+    return jsonResp({ token, name: result.name })
+  }),
+})
+
+// GET /api/v1/driver/rides — aktivní zakázky řidiče
+http.route({
+  path: "/api/v1/driver/rides",
+  method: "GET",
+  handler: httpAction(async (ctx, req) => {
+    const driver = await authWearDriver(ctx, req)
+    if (!driver) return jsonResp({ error: "Neplatný token" }, 401)
+    const rides = await ctx.runQuery(internal.wear.getWearRides, { driverId: driver.driverId as any })
+    return jsonResp({ name: driver.name, rides })
+  }),
+})
+
+// GET /api/v1/driver/available — volné zakázky k přijetí
+http.route({
+  path: "/api/v1/driver/available",
+  method: "GET",
+  handler: httpAction(async (ctx, req) => {
+    const driver = await authWearDriver(ctx, req)
+    if (!driver) return jsonResp({ error: "Neplatný token" }, 401)
+    const rides = await ctx.runQuery(internal.wear.getWearAvailable, { driverId: driver.driverId as any })
+    return jsonResp({ rides })
+  }),
+})
+
+// POST /api/v1/driver/accept | /reject | /status — akce nad zakázkou
+http.route({
+  path: "/api/v1/driver/accept",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    const driver = await authWearDriver(ctx, req)
+    if (!driver) return jsonResp({ error: "Neplatný token" }, 401)
+    const body = await req.json().catch(() => null)
+    if (!body?.rideId) return jsonResp({ error: "Chybí rideId" }, 400)
+    try {
+      await ctx.runMutation(internal.wear.wearSelfAssign, {
+        driverId: driver.driverId as any,
+        rideId: body.rideId,
+      })
+      return jsonResp({ ok: true })
+    } catch (e: any) {
+      return jsonResp({ error: e?.message ?? "Akce se nezdařila" }, 400)
+    }
+  }),
+})
+
+http.route({
+  path: "/api/v1/driver/reject",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    const driver = await authWearDriver(ctx, req)
+    if (!driver) return jsonResp({ error: "Neplatný token" }, 401)
+    const body = await req.json().catch(() => null)
+    if (!body?.rideId) return jsonResp({ error: "Chybí rideId" }, 400)
+    try {
+      await ctx.runMutation(internal.wear.wearReject, {
+        driverId: driver.driverId as any,
+        rideId: body.rideId,
+      })
+      return jsonResp({ ok: true })
+    } catch (e: any) {
+      return jsonResp({ error: e?.message ?? "Akce se nezdařila" }, 400)
+    }
+  }),
+})
+
+http.route({
+  path: "/api/v1/driver/status",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    const driver = await authWearDriver(ctx, req)
+    if (!driver) return jsonResp({ error: "Neplatný token" }, 401)
+    const body = await req.json().catch(() => null)
+    if (!body?.rideId || !["pickup", "transit"].includes(body?.status)) {
+      return jsonResp({ error: "Chybí rideId nebo neplatný status (pickup/transit)" }, 400)
+    }
+    try {
+      await ctx.runMutation(internal.wear.wearSetStatus, {
+        driverId: driver.driverId as any,
+        rideId: body.rideId,
+        status: body.status,
+      })
+      return jsonResp({ ok: true })
+    } catch (e: any) {
+      return jsonResp({ error: e?.message ?? "Akce se nezdařila" }, 400)
+    }
+  }),
+})
+
 export default http

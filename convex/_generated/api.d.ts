@@ -37,6 +37,7 @@ import type * as teams from "../teams.js";
 import type * as templates from "../templates.js";
 import type * as users from "../users.js";
 import type * as vending from "../vending.js";
+import type * as wear from "../wear.js";
 
 import type {
   ApiFromModules,
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   templates: typeof templates;
   users: typeof users;
   vending: typeof vending;
+  wear: typeof wear;
 }>;
 
 /**

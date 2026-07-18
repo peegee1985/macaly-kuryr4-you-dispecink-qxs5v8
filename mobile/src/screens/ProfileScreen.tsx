@@ -23,6 +23,9 @@ export function ProfileScreen({
 }) {
   const updateProfile = useMutation(api.users.updateMyProfile);
   const updateNotifPrefs = useMutation(api.users.updateNotifPrefs);
+  const createWearCode = useMutation(api.wear.createWearPairingCode);
+  const [wearCode, setWearCode] = useState<string | null>(null);
+  const [wearCodeLoading, setWearCodeLoading] = useState(false);
   const [name, setName] = useState(user.name || "");
   const [phone, setPhone] = useState(user.phone || "");
   const [vehicleType, setVehicleType] = useState(user.vehicleType || "");
@@ -167,6 +170,37 @@ export function ProfileScreen({
         />
       </Card>
 
+      <Text style={styles.sectionTitle}>Hodinky (Wear OS)</Text>
+      <Card style={styles.form}>
+        {wearCode ? (
+          <View>
+            <Text style={styles.wearCode}>{wearCode}</Text>
+            <Text style={styles.wearHint}>
+              Zadejte tento kód v aplikaci K4Y Řidič na hodinkách. Platí 10 minut.
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.wearHint}>
+            Propojte hodinky s vaším účtem — na hodinkách pak uvidíte zakázky a můžete je přijímat.
+          </Text>
+        )}
+        <AppButton
+          title={wearCode ? "Vygenerovat nový kód" : "Připojit hodinky"}
+          icon="watch-outline"
+          variant="secondary"
+          loading={wearCodeLoading}
+          onPress={() => {
+            setWearCodeLoading(true);
+            createWearCode({})
+              .then((result) => setWearCode(result.code))
+              .catch((cause) =>
+                Alert.alert("Kód se nepodařilo vytvořit", cause instanceof Error ? cause.message : "Zkuste to znovu."),
+              )
+              .finally(() => setWearCodeLoading(false));
+          }}
+        />
+      </Card>
+
       <AppButton title="Uložit změny" icon="save-outline" loading={saving} onPress={() => void save()} style={styles.save} />
       <AppButton
         title="Odhlásit se"
@@ -231,6 +265,8 @@ function Field({ icon, label, ...props }: React.ComponentProps<typeof TextInput>
 }
 
 const styles = StyleSheet.create({
+  wearCode: { color: colors.primary, fontSize: 34, fontWeight: "900", letterSpacing: 6, textAlign: "center", marginBottom: spacing.sm },
+  wearHint: { color: colors.textMuted, fontSize: 13, marginBottom: spacing.md, textAlign: "center" },
   identity: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.xl },
   avatar: { width: 58, height: 58, borderRadius: 20, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
   avatarText: { color: colors.primaryText, fontSize: 24, fontWeight: "900" },
