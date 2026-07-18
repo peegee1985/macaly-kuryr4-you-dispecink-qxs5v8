@@ -15,7 +15,21 @@ android {
         versionName "0.2.0"
     }
 
+    // Pevný testovací klíč, aby šly buildy z CI instalovat přes sebe jako
+    // aktualizace (výchozí debug keystore je na každém runneru jiný).
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'k4ywear1'
+            keyAlias 'k4ywear'
+            keyPassword 'k4ywear1'
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled false
         }
