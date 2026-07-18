@@ -1,6 +1,6 @@
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useMutation } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { useEffect, useState } from "react";
 import { Platform, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 
@@ -58,6 +58,8 @@ export function NewRideScreen({
 }) {
   const createRide = useMutation(api.rides.createRide);
   const saveTemplate = useMutation(api.templates.saveTemplate);
+  const suggestPrice = useAction(api.aiPricing.suggestPrice);
+  const [finalPrice, setFinalPrice] = useState<number | null>(null);
   const [form, setForm] = useState<FormState>(() => initialForm(initialTemplate));
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [templateName, setTemplateName] = useState("");
@@ -110,6 +112,27 @@ export function NewRideScreen({
         weight: form.weight ? Number(form.weight) : undefined,
         notes: form.notes.trim() || undefined,
       };
+      // Cenu spočítá backend (stejné AI nacenění jako na webu). Když se
+      // nacenění nepovede, objednávka projde bez ceny a nacení ji dispečer.
+      let price: number | undefined;
+      try {
+        const pricing = await suggestPrice({
+          pickupAddress: rideTemplate.pickupAddress,
+          deliveryAddress: rideTemplate.deliveryAddress,
+          cargoType: rideTemplate.cargoType,
+          cargoDescription: rideTemplate.cargoDescription,
+          weight: rideTemplate.weight,
+          quantity: rideTemplate.quantity,
+          notes: rideTemplate.notes,
+          requestedPickupAt: form.pickupAt.getTime(),
+          requestedDeliveryAt: form.deliveryAt.getTime(),
+        });
+        price = pricing?.doporucenaCena > 0 ? pricing.doporucenaCena : undefined;
+      } catch {
+        price = undefined;
+      }
+      setFinalPrice(price ?? null);
+
       await createRide({
         ...rideTemplate,
         pickupLat: form.pickupAddress.lat,
@@ -118,6 +141,7 @@ export function NewRideScreen({
         deliveryLat: form.deliveryAddress.lat,
         deliveryLng: form.deliveryAddress.lng,
         requestedDeliveryAt: form.deliveryAt.getTime(),
+        price,
       });
       if (saveAsTemplate) {
         await saveTemplate({ title: templateName.trim(), rideTemplate });
@@ -135,7 +159,14 @@ export function NewRideScreen({
       <Screen contentStyle={styles.successScreen}>
         <View style={styles.successIcon}><Ionicons name="checkmark" size={42} color={colors.success} /></View>
         <Text style={styles.successTitle}>Zásilka byla odeslána</Text>
-        <Text style={styles.successText}>Dispečer ji nyní zpracuje. O změně stavu vás upozorníme.</Text>
+        {finalPrice ? (
+          <Text style={styles.successPrice}>{finalPrice.toLocaleString("cs-CZ")} Kč</Text>
+        ) : null}
+        <Text style={styles.successText}>
+          {finalPrice
+            ? "Zaplatit můžete kartou nebo Google Pay v detailu zásilky (Zaplatit online) — odkaz přišel i e-mailem."
+            : "Dispečer ji nyní zpracuje a zašle platební odkaz. O změně stavu vás upozorníme."}
+        </Text>
         <AppButton title="Zobrazit moje zásilky" icon="cube-outline" onPress={onCreated} style={styles.successButton} />
         <AppButton title="Vytvořit další" variant="secondary" onPress={() => { setForm(initialForm()); setCreated(false); setSaveAsTemplate(false); setTemplateName(""); }} style={styles.successButton} />
       </Screen>
@@ -282,6 +313,7 @@ const styles = StyleSheet.create({
   successScreen: { alignItems: "center", justifyContent: "center" },
   successIcon: { width: 84, height: 84, borderRadius: 28, backgroundColor: "rgba(34,197,94,0.12)", alignItems: "center", justifyContent: "center" },
   successTitle: { color: colors.text, fontWeight: "900", fontSize: 23, textAlign: "center", marginTop: spacing.xl },
+  successPrice: { color: colors.primary, fontWeight: "900", fontSize: 34, textAlign: "center", marginTop: spacing.sm },
   successText: { color: colors.textMuted, fontSize: 14, lineHeight: 21, textAlign: "center", marginTop: spacing.sm, marginBottom: spacing.xl, maxWidth: 320 },
   successButton: { alignSelf: "stretch", marginBottom: spacing.md },
 });

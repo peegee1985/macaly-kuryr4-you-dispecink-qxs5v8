@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { mutation, query, internalMutation, internalQuery, action } from "./_generated/server"
+import { mutation, query, internalMutation, internalQuery, action, internalAction } from "./_generated/server"
 import type { MutationCtx } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import type { Doc, Id } from "./_generated/dataModel"
@@ -282,6 +282,9 @@ export const createRide = mutation({
     quantity: v.number(),
     notes: v.optional(v.string()),
     attachmentIds: v.optional(v.array(v.id("_storage"))),
+    // Cena z AI nacenění (mobilní aplikace) — po vytvoření se automaticky
+    // vygeneruje platební odkaz
+    price: v.optional(v.number()),
   },
   returns: v.id("rides"),
   handler: async (ctx, args) => {
@@ -317,9 +320,16 @@ export const createRide = mutation({
       podPhotoIds: [],
       isPaid: false,
       rideNumber: generateRideNumber(),
+      price: args.price && args.price > 0 ? Math.round(args.price) : undefined,
+      currency: args.price && args.price > 0 ? "CZK" : undefined,
     })
 
     console.log(`Ride created: ${rideId}`)
+
+    // Naceněná objednávka (z aplikace) → rovnou vygenerovat platební odkaz
+    if (args.price && args.price > 0) {
+      await ctx.scheduler.runAfter(0, internal.rides.autoCreatePaymentLink, { rideId })
+    }
 
     // Notify admin about new order
     const adminEmail = process.env.RECIPIENT_EMAIL
@@ -1684,6 +1694,46 @@ export const sendPaymentLink = action({
 
     if (!result.success) throw new Error(result.error ?? "Nepodařilo se vytvořit platební odkaz")
     return result
+  },
+})
+
+// Internal: data pro automatický platební odkaz (bez kontroly role —
+// spouští se jen ze createRide pro čerstvě vytvořenou zakázku)
+export const getAutoPaymentData = internalQuery({
+  args: { rideId: v.id("rides") },
+  handler: async (ctx, args) => {
+    const ride = await ctx.db.get(args.rideId)
+    if (!ride) return null
+    const customer = await ctx.db.get(ride.customerId)
+    if (!customer) return null
+    return { ride, customer }
+  },
+})
+
+// Internal: po vytvoření naceněné objednávky z aplikace vytvoří Stripe
+// checkout (podporuje Google Pay / Apple Pay) a uloží odkaz k zakázce
+export const autoCreatePaymentLink = internalAction({
+  args: { rideId: v.id("rides") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const data = await ctx.runQuery(internal.rides.getAutoPaymentData, { rideId: args.rideId })
+    if (!data || !data.ride.price || data.ride.price <= 0) return null
+    const { ride, customer } = data
+
+    const result = await ctx.runAction(internal.stripe.createPaymentLink, {
+      rideId: args.rideId,
+      rideNumber: ride.rideNumber,
+      price: ride.price,
+      currency: ride.currency ?? "CZK",
+      customerEmail: customer.email,
+      customerName: customer.name ?? customer.email,
+      pickupAddress: ride.pickupAddress,
+      deliveryAddress: ride.deliveryAddress,
+    })
+    if (!result.success) {
+      console.error("[rides] autoCreatePaymentLink failed", ride.rideNumber, result.error)
+    }
+    return null
   },
 })
 

@@ -85,6 +85,7 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
             <DetailRow label="Popis" value={ride.cargoDescription} />
             <DetailRow label="Množství" value={`${ride.quantity} ks`} />
             {ride.weight ? <DetailRow label="Hmotnost" value={`${ride.weight} kg`} /> : null}
+            {ride.price ? <DetailRow label="Cena" value={`${ride.price.toLocaleString("cs-CZ")} ${ride.currency ?? "Kč"}`} /> : null}
             <DetailRow label="Platba" value={ride.isPaid ? "Uhrazeno" : "Čeká na úhradu"} />
             {ride.notes ? <DetailRow label="Poznámka" value={ride.notes} /> : null}
             {ride.dispatcherNotes ? <DetailRow label="Dispečer" value={ride.dispatcherNotes} /> : null}
