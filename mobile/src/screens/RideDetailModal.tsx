@@ -18,6 +18,7 @@ import {
 import SignatureCanvas, { type SignatureViewRef } from "react-native-signature-canvas";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { SlideToConfirm } from "../components/SlideToConfirm";
 import { AppButton, Card, StatusPill } from "../components/ui";
 import { api } from "../lib/api";
 import { formatDateTime, formatMoney } from "../lib/format";
@@ -477,7 +478,12 @@ export function RideDetailModal({ ride, onClose }: { ride: Ride | null; onClose:
 
         {!podMode && primaryAction ? (
           <View style={[styles.bottomAction, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-            <AppButton title={primaryAction} icon="arrow-forward-circle-outline" loading={busy} onPress={() => void performPrimaryAction()} />
+            <SlideToConfirm
+              label={primaryAction}
+              color={current.status === "approved" ? colors.success : colors.primary}
+              disabled={busy}
+              onConfirm={() => performPrimaryAction()}
+            />
           </View>
         ) : null}
       </View>
