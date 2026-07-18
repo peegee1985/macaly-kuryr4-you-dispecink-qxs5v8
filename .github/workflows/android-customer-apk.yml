@@ -1,0 +1,70 @@
+name: Android Customer APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "mobile-customer/**"
+      - "convex/**"
+      - ".github/workflows/android-customer-apk.yml"
+  pull_request:
+    paths:
+      - "mobile-customer/**"
+      - "convex/**"
+      - ".github/workflows/android-customer-apk.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    name: Build customer APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile-customer
+    env:
+      CI: "1"
+      EXPO_PUBLIC_CONVEX_URL: https://amicable-dogfish-440.eu-west-1.convex.cloud
+      EXPO_NO_TELEMETRY: "1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: mobile-customer/package-lock.json
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate TypeScript
+        run: npm run typecheck
+
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build standalone debug APK
+        run: ./gradlew assembleDebug
+        working-directory: mobile-customer/android
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuryr4you-zakaznik-apk
+          path: mobile-customer/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
