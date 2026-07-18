@@ -1,7 +1,10 @@
 package cz.kuryr4you.driver.wear
 
+import android.Manifest
 import android.app.RemoteInput
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -25,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.items
@@ -366,7 +370,53 @@ fun ListScreen(apiKey: String, onOrderClick: (Order) -> Unit, onResetKey: () -> 
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+
+        item {
+            MonitorToggle()
+        }
     }
+}
+
+@Composable
+fun MonitorToggle() {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
+    var enabled by remember { mutableStateOf(prefs.getBoolean(KEY_MONITOR, false)) }
+
+    fun setMonitor(on: Boolean) {
+        enabled = on
+        prefs.edit().putBoolean(KEY_MONITOR, on).apply()
+        if (on) MonitorService.start(context) else MonitorService.stop(context)
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) setMonitor(true)
+    }
+
+    Chip(
+        onClick = {
+            if (enabled) {
+                setMonitor(false)
+            } else {
+                val needsPermission = Build.VERSION.SDK_INT >= 33 &&
+                    context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                if (needsPermission) {
+                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    setMonitor(true)
+                }
+            }
+        },
+        label = { Text(if (enabled) "Hlídání: zapnuto" else "Hlídání: vypnuto") },
+        colors = if (enabled) {
+            ChipDefaults.primaryChipColors(backgroundColor = Color(0xFFF59E0B))
+        } else {
+            ChipDefaults.secondaryChipColors()
+        },
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
