@@ -2,6 +2,13 @@ name: Expo Android releases
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "mobile/**"
+      - "mobile-dispatcher/**"
+      - ".github/workflows/eas-android-build.yml"
   push:
     branches:
       - main
@@ -15,8 +22,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: eas-android-${{ github.ref }}
-  cancel-in-progress: false
+  group: eas-android-refs/heads/${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   build:
