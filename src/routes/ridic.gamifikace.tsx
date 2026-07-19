@@ -1,5 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery } from 'convex/react'
+import { useEffect } from 'react'
+import { useMutation, useQuery } from 'convex/react'
+import { Flame, Target } from 'lucide-react'
 import { api } from '../../convex/_generated/api'
 import { DriverShell } from '@/components/DriverShell'
 
@@ -125,18 +127,6 @@ function BadgeCard({
       ? Math.round((metricValue / nextTierThreshold) * 100)
       : 0
 
-  // Simple icon map using emoji
-  const ICON_MAP: Record<string, string> = {
-    rides: '📦',
-    star: '⭐',
-    streak: '🔥',
-    pod: '📸',
-    vending: '🔧',
-    speed: '⚡',
-    milestone: '🏆',
-  }
-  const icon = ICON_MAP[iconKey] ?? '🏅'
-
   return (
     <div
       className={`bg-card border rounded-xl p-4 ${
@@ -151,7 +141,9 @@ function BadgeCard({
             earned ? TIER_BG[currentTier!] : 'bg-secondary'
           } border`}
         >
-          {icon}
+          <svg className="w-7 h-7" aria-hidden="true">
+            <use href={`/gamification/badge-sprite.svg#${iconKey}`} />
+          </svg>
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-heading font-semibold text-sm leading-tight">{name}</p>
@@ -186,18 +178,25 @@ function BadgeCard({
       )}
 
       {!nextTier && earned && (
-        <p className="text-xs text-primary font-medium mt-1">Nejvyšší stupeň dosažen! 🏆</p>
+        <p className="text-xs text-primary font-medium mt-1">Nejvyšší stupeň dosažen!</p>
       )}
     </div>
   )
 }
 
 function GamifikacePage() {
+  const initialize = useMutation(api.gamification.initializeMyGamification)
   const profile = useQuery(api.gamification.getMyProfile)
   const dailyChallenges = useQuery(api.gamification.getMyChallenges, { cadence: 'daily' })
   const weeklyChallenges = useQuery(api.gamification.getMyChallenges, { cadence: 'weekly' })
   const monthlyChallenges = useQuery(api.gamification.getMyChallenges, { cadence: 'monthly' })
   const badges = useQuery(api.gamification.getMyBadges)
+
+  useEffect(() => {
+    void initialize({}).catch(error => {
+      console.warn('[gamification] initialization failed', error)
+    })
+  }, [initialize])
 
   const level = profile?.level ?? 1
   const xpCurrentLevel = profile?.xpCurrentLevel ?? 0
@@ -226,7 +225,7 @@ function GamifikacePage() {
               <p className="text-sm text-muted-foreground">Úroveň {level}</p>
               {profile && profile.currentStreak > 0 && (
                 <div className="flex items-center gap-1 mt-1">
-                  <span className="text-sm">🔥</span>
+                  <Flame className="w-4 h-4" aria-hidden="true" />
                   <span className="text-sm font-medium text-amber-400">
                     {profile.currentStreak} dní v řadě
                   </span>
@@ -289,7 +288,7 @@ function GamifikacePage() {
           monthlyChallenges !== undefined &&
           (dailyChallenges.length + weeklyChallenges.length + monthlyChallenges.length) === 0 && (
             <div className="bg-card border border-border rounded-2xl p-6 text-center">
-              <p className="text-2xl mb-2">🎯</p>
+              <Target className="w-8 h-8 text-primary mx-auto mb-2" aria-hidden="true" />
               <p className="font-medium">Zatím žádné výzvy</p>
               <p className="text-sm text-muted-foreground mt-1">
                 Výzvy se přiřadí automaticky po prvním doručení.

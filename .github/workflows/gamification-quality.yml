@@ -1,0 +1,49 @@
+name: Gamification quality
+
+on:
+  pull_request:
+    paths:
+      - "convex/**"
+      - "mobile/**"
+      - "src/routes/ridic.gamifikace.tsx"
+      - "__tests__/lib/gamificationRules.test.ts"
+      - ".github/workflows/gamification-quality.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-and-convex:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Generate routes and build web
+        run: npm run build
+      - name: Typecheck web and Convex
+        run: npx tsc --noEmit
+      - name: Test gamification rules
+        run: npm test -- __tests__/lib/gamificationRules.test.ts
+
+  native-driver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - name: Typecheck native driver app
+        run: npm run typecheck

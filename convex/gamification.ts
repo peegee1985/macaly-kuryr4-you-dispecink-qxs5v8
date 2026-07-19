@@ -15,6 +15,16 @@ import type { MutationCtx, QueryCtx } from "./_generated/server"
 export const LEVEL_COEFFICIENT = 250
 export const MAX_LEVEL = 30
 export const MAX_STOP_XP_PER_RIDE = 50
+const SUPPORTED_CHALLENGE_METRICS = new Set([
+  "rides_completed",
+  "pod_completion_ratio",
+  "on_time_ratio",
+  "vending_checklist_ratio",
+  "multi_stop_routes",
+  "active_days",
+  "average_rating",
+  "completion_ratio",
+])
 
 /** XP potřebné pro úroveň L: 250 * (L-1)^2 */
 export function xpForLevel(level: number): number {
@@ -50,6 +60,10 @@ export function titleForLevel(level: number): string {
     if (level >= t.minLevel) return t.title
   }
   return "Nováček"
+}
+
+export function badgeEventKey(driverId: string, badgeCode: string, tier: string): string {
+  return `badge:${driverId}:${badgeCode}:${tier}`
 }
 
 /** Vrátí YYYY-MM-DD v Europe/Prague */
@@ -122,6 +136,9 @@ export const awardXpInternal = internalMutation({
   },
   returns: v.object({ awarded: v.boolean(), newLevel: v.optional(v.number()) }),
   handler: async (ctx, args) => {
+    await ensureGamificationData(ctx)
+    await ensureDriverChallenges(ctx, args.driverId, Date.now())
+
     // Idempotence: pokud eventKey již existuje, nic neudělej
     const existing = await ctx.db
       .query("gamificationEvents")
@@ -133,6 +150,7 @@ export const awardXpInternal = internalMutation({
     }
 
     const now = Date.now()
+    const seasonKey = await ensureCurrentSeason(ctx, now)
     await ctx.db.insert("gamificationEvents", {
       driverId: args.driverId,
       eventKey: args.eventKey,
@@ -146,8 +164,9 @@ export const awardXpInternal = internalMutation({
 
     // Aktualizuj profil
     const profile = await getOrCreateProfile(ctx, args.driverId)
-    const newLifetimeXp = profile.lifetimeXp + args.xp
-    const newSeasonXp = profile.seasonXp + args.xp
+    const newLifetimeXp = Math.max(0, profile.lifetimeXp + args.xp)
+    const seasonBaseXp = profile.seasonKey === seasonKey ? profile.seasonXp : 0
+    const newSeasonXp = Math.max(0, seasonBaseXp + args.xp)
     const oldLevel = profile.level
     const newLevel = levelFromXp(newLifetimeXp)
 
@@ -155,7 +174,7 @@ export const awardXpInternal = internalMutation({
     const todayStr = pragueDateString(now)
     let newStreak = profile.currentStreak
     let newLongest = profile.longestStreak
-    if (profile.lastActiveDate !== todayStr) {
+    if (args.xp > 0 && profile.lastActiveDate !== todayStr) {
       // Zkontroluj zda je to včerejší den (streak pokračuje)
       const yesterdayTs = now - 86400000
       const yesterdayStr = pragueDateString(yesterdayTs)
@@ -176,7 +195,8 @@ export const awardXpInternal = internalMutation({
       seasonXp: newSeasonXp,
       currentStreak: newStreak,
       longestStreak: newLongest,
-      lastActiveDate: todayStr,
+      lastActiveDate: args.xp > 0 ? todayStr : profile.lastActiveDate,
+      seasonKey,
       updatedAt: now,
       pendingLevelUp: leveledUp ? true : profile.pendingLevelUp,
       pendingLevelUpLevel: leveledUp ? newLevel : profile.pendingLevelUpLevel,
@@ -215,24 +235,25 @@ export const updateChallengesForEvent = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const now = args.now
+    await ensureGamificationData(ctx)
+    await ensureDriverChallenges(ctx, args.driverId, args.now)
 
-    // Metriky závisí na typu události
-    const relevantMetrics: Record<string, string[]> = {
-      ride_completed: ["rides_completed", "completion_ratio"],
+    const affectedMetrics: Record<string, string[]> = {
+      ride_completed: ["rides_completed", "pod_completion_ratio", "on_time_ratio", "completion_ratio", "active_days"],
+      ride_failed: ["completion_ratio"],
       pod_complete: ["pod_completion_ratio"],
-      pod_photo_and_signature: ["pod_completion_ratio"],
       pickup_on_time: ["on_time_ratio"],
       delivery_on_time: ["on_time_ratio"],
-      vending_visit_completed: ["vending_checklist_ratio"],
+      vending_visit_completed: ["vending_checklist_ratio", "active_days"],
       vending_checklist_complete: ["vending_checklist_ratio"],
-      rating_five: ["average_rating"],
+      rating_received: ["average_rating"],
       intermediate_stop: ["multi_stop_routes"],
     }
-    const affected = relevantMetrics[args.type] ?? []
+    const affected = affectedMetrics[args.type] ?? []
+    if (affected.length === 0) return null
 
     for (const cadence of ["daily", "weekly", "monthly"] as const) {
-      const pk = periodKey(cadence, now)
+      const pk = periodKey(cadence, args.now)
       const challenges = await ctx.db
         .query("driverChallenges")
         .withIndex("by_driver_period", q => q.eq("driverId", args.driverId).eq("periodKey", pk))
@@ -243,34 +264,28 @@ export const updateChallengesForEvent = internalMutation({
         const template = await ctx.db.get(challenge.templateId)
         if (!template || !affected.includes(template.metric)) continue
 
-        // Přepočítej progress
-        const newProgress = challenge.progress + 1
-        const completed = newProgress >= challenge.target
-
+        const { progress, eligible } = await challengeProgress(ctx, args.driverId, challenge, template)
+        const completed = eligible && progress >= challenge.target
         await ctx.db.patch(challenge._id, {
-          progress: newProgress,
+          progress,
           status: completed ? "completed" : "active",
-          completedAt: completed ? now : undefined,
+          completedAt: completed ? args.now : undefined,
         })
 
-        if (completed) {
-          // Udělej XP za splnění výzvy
-          const challengeEventKey = `challenge:${challenge._id}:completed`
-          await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
-            driverId: args.driverId,
-            eventKey: challengeEventKey,
-            type: "challenge_completed",
-            xp: challenge.xpReward,
-          })
-          // In-app notifikace
-          await ctx.db.insert("notifications", {
-            userId: args.driverId,
-            title: "🏆 Výzva splněna!",
-            message: `Splnil jsi výzvu „${template.name}" a získal ${challenge.xpReward} XP!`,
-            read: false,
-            type: "ride_status",
-          })
-        }
+        if (!completed) continue
+        await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
+          driverId: args.driverId,
+          eventKey: `challenge:${challenge._id}:completed`,
+          type: "challenge_completed",
+          xp: challenge.xpReward,
+        })
+        await ctx.db.insert("notifications", {
+          userId: args.driverId,
+          title: "Výzva splněna",
+          message: `Splnil jsi výzvu „${template.name}" a získal ${challenge.xpReward} XP.`,
+          read: false,
+          type: "ride_status",
+        })
       }
     }
     return null
@@ -317,7 +332,7 @@ export const checkBadgesForDriver = internalMutation({
         if (existing && tierOrder[existing.tier] >= tierOrder[tier]) break // Již má
 
         // Uděl odznak
-        const eventKey = `badge:${def.code}:${tier}`
+        const eventKey = badgeEventKey(driverId, def.code, tier)
         const alreadyAwarded = await ctx.db
           .query("gamificationEvents")
           .withIndex("by_event_key", q => q.eq("eventKey", eventKey))
@@ -447,6 +462,30 @@ async function computeBadgeMetric(
   }
 }
 
+
+/** Inicializuje profil, sezónu a aktuální výzvy při otevření aplikace. */
+export const initializeMyGamification = mutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const authId = await getAuthUserId(ctx)
+    if (!authId) throw new Error("Nejste přihlášeni")
+    const user = await ctx.db.get(authId as Id<"users">)
+    if (!user || !["driver", "service_driver"].includes(user.role)) {
+      throw new Error("Nemáte oprávnění")
+    }
+    const now = Date.now()
+    await ensureGamificationData(ctx)
+    const seasonKey = await ensureCurrentSeason(ctx, now)
+    const profile = await getOrCreateProfile(ctx, authId as Id<"users">)
+    if (profile.seasonKey !== seasonKey) {
+      await ctx.db.patch(profile._id, { seasonKey, seasonXp: 0, updatedAt: now })
+    }
+    await ensureDriverChallenges(ctx, authId as Id<"users">, now)
+    return null
+  },
+})
+
 // ─── Public: driver queries ────────────────────────────────────────────────
 
 export const getMyProfile = query({
@@ -471,7 +510,7 @@ export const getMyProfile = query({
     const authId = await getAuthUserId(ctx)
     if (!authId) return null
     const user = await ctx.db.get(authId as Id<"users">)
-    if (!user || user.role !== "driver") return null
+    if (!user || !["driver", "service_driver"].includes(user.role)) return null
     const profile = await ctx.db
       .query("driverGamificationProfiles")
       .withIndex("by_driver", q => q.eq("driverId", authId as Id<"users">))
@@ -517,7 +556,7 @@ export const getMyChallenges = query({
     const authId = await getAuthUserId(ctx)
     if (!authId) return []
     const user = await ctx.db.get(authId as Id<"users">)
-    if (!user || user.role !== "driver") return []
+    if (!user || !["driver", "service_driver"].includes(user.role)) return []
     const pk = periodKey(args.cadence, Date.now())
     const challenges = await ctx.db
       .query("driverChallenges")
@@ -561,7 +600,7 @@ export const getMyBadges = query({
     const authId = await getAuthUserId(ctx)
     if (!authId) return []
     const user = await ctx.db.get(authId as Id<"users">)
-    if (!user || user.role !== "driver") return []
+    if (!user || !["driver", "service_driver"].includes(user.role)) return []
     const driverId = authId as Id<"users">
 
     const profile = await ctx.db
@@ -574,7 +613,7 @@ export const getMyBadges = query({
       .withIndex("by_driver", q => q.eq("driverId", driverId))
       .collect()
 
-    const result: Array<{ code: string; name: string; description: string; iconKey: string; currentTier: "bronze" | "silver" | "gold" | "platinum"; awardedAt: number; nextTier: "bronze" | "silver" | "gold" | "platinum" | undefined; nextTierThreshold: number | undefined; metricValue: number }> = []
+    const result: Array<{ code: string; name: string; description: string; iconKey: string; currentTier?: "bronze" | "silver" | "gold" | "platinum"; awardedAt?: number; nextTier?: "bronze" | "silver" | "gold" | "platinum"; nextTierThreshold?: number; metricValue: number }> = []
     for (const def of defs) {
       const earned = earnedBadges
         .filter(b => b.badgeCode === def.code)
@@ -816,6 +855,9 @@ export const manualAward = mutation({
     if (!driver || driver.role !== "driver") throw new Error("Řidič nenalezen")
 
     const now = Date.now()
+    await ensureGamificationData(ctx)
+    await ensureDriverChallenges(ctx, args.driverId, now)
+    const seasonKey = await ensureCurrentSeason(ctx, now)
     const eventKey = `manual:${authId}:${args.driverId}:${now}`
     const profile = await getOrCreateProfile(ctx, args.driverId)
 
@@ -832,11 +874,13 @@ export const manualAward = mutation({
     })
 
     const newLifetime = Math.max(0, profile.lifetimeXp + args.xp)
-    const newSeason = Math.max(0, profile.seasonXp + args.xp)
+    const seasonBaseXp = profile.seasonKey === seasonKey ? profile.seasonXp : 0
+    const newSeason = Math.max(0, seasonBaseXp + args.xp)
     const newLevel = levelFromXp(newLifetime)
     await ctx.db.patch(profile._id, {
       lifetimeXp: newLifetime,
       seasonXp: newSeason,
+      seasonKey,
       level: newLevel,
       updatedAt: now,
     })
@@ -845,10 +889,14 @@ export const manualAward = mutation({
     const sign = args.xp >= 0 ? "+" : ""
     await ctx.db.insert("notifications", {
       userId: args.driverId,
-      title: args.xp >= 0 ? "🌟 Ocenění od dispečera" : "📝 Korekce XP",
+      title: args.xp >= 0 ? "Ocenění od dispečera" : "Korekce XP",
       message: `Dispečer ti ${args.xp >= 0 ? "udělil" : "upravil"} ${sign}${args.xp} XP: ${args.reason}`,
       read: false,
       type: "ride_status",
+    })
+    await ctx.scheduler.runAfter(0, internal.gamification.checkBadgesForDriver, {
+      driverId: args.driverId,
+      now,
     })
 
     return null
@@ -913,56 +961,269 @@ export const updateChallengeTemplate = mutation({
   },
 })
 
+
+async function ensureGamificationData(ctx: MutationCtx): Promise<void> {
+      // Challenge templates
+      const templates = [
+        { code: "daily_rides", name: "Denní zásilky", description: "Dokonči stanovený počet zásilek dnes", cadence: "daily" as const, metric: "rides_completed", adaptiveTargets: [1, 2, 3], xpReward: 100, active: true },
+        { code: "daily_complete_pod", name: "Kompletní POD", description: "Ulož kompletní doklad u všech dnešních zásilek", cadence: "daily" as const, metric: "pod_completion_ratio", target: 1, xpReward: 75, active: true },
+        { code: "daily_on_time", name: "Dochvilnost", description: "Dodrž všechny časové sloty dnes", cadence: "daily" as const, metric: "on_time_ratio", target: 1, xpReward: 100, active: true },
+        { code: "daily_gps_available", name: "GPS připravena", description: "Měj GPS dostupnou alespoň 90 % aktivní směny", cadence: "daily" as const, metric: "gps_availability_ratio", target: 0.9, xpReward: 50, active: false },
+        { code: "daily_vending_checklists", name: "Vending checklisty", description: "Dokonči všechny povinné vending checklisty", cadence: "daily" as const, metric: "vending_checklist_ratio", target: 1, xpReward: 75, active: true },
+        { code: "weekly_reliable", name: "Spolehlivý týden", description: "Alespoň 95 % zásilek doručeno včas tento týden", cadence: "weekly" as const, metric: "on_time_ratio", target: 0.95, xpReward: 400, active: true },
+        { code: "weekly_pod_pro", name: "POD profesionál", description: "100 % zásilek s dokladem tento týden", cadence: "weekly" as const, metric: "pod_completion_ratio", target: 1, xpReward: 350, active: true },
+        { code: "weekly_multi_stop", name: "Mistr tras", description: "Dokonči vícezastávkové trasy tento týden", cadence: "weekly" as const, metric: "multi_stop_routes", adaptiveTargets: [1, 3, 5], xpReward: 350, active: true },
+        { code: "weekly_streak", name: "Série aktivity", description: "Buď aktivní alespoň 5 různých dní tento týden", cadence: "weekly" as const, metric: "active_days", target: 5, xpReward: 500, active: true },
+        { code: "weekly_no_claim", name: "Bez reklamace", description: "Žádná potvrzená reklamace tento týden", cadence: "weekly" as const, metric: "confirmed_claims", target: 0, minimumWorkload: 5, xpReward: 300, active: false },
+        { code: "monthly_volume", name: "Objem zásilek", description: "Dokonči cílový počet zásilek tento měsíc", cadence: "monthly" as const, metric: "rides_completed", adaptiveTargets: [25, 50, 100], xpReward: 1200, active: true },
+        { code: "monthly_on_time", name: "Dochvilnost měsíce", description: "95 % včasných doručení při min. 20 zásilkách", cadence: "monthly" as const, metric: "on_time_ratio", target: 0.95, minimumWorkload: 20, xpReward: 1200, active: true },
+        { code: "monthly_rating", name: "Zákaznické hodnocení", description: "Průměrné hodnocení min. 4,8 při min. 10 hodnoceních", cadence: "monthly" as const, metric: "average_rating", target: 4.8, minimumRatings: 10, xpReward: 1500, active: true },
+        { code: "monthly_success", name: "Úspěšnost doručení", description: "98 % úspěšně dokončených zásilek", cadence: "monthly" as const, metric: "completion_ratio", target: 0.98, minimumWorkload: 20, xpReward: 1500, active: true },
+        { code: "monthly_pod", name: "POD měsíce", description: "Kompletní POD u min. 95 % doručení", cadence: "monthly" as const, metric: "pod_completion_ratio", target: 0.95, minimumWorkload: 20, xpReward: 1000, active: true },
+      ]
+      for (const t of templates) {
+        const existing = await ctx.db.query("challengeTemplates").withIndex("by_code", q => q.eq("code", t.code)).first()
+        if (!existing) await ctx.db.insert("challengeTemplates", t)
+      }
+  
+      // Badge definitions
+      const badges = [
+        { code: "first_delivery", name: "První zásilka", description: "Dokonči první zásilku jako kurýr", category: "delivery", iconKey: "badge-icon-first-delivery", metric: "rides_completed", tiers: { bronze: 1, silver: 10, gold: 50, platinum: 100 }, active: true },
+        { code: "always_on_time", name: "Vždy včas", description: "Doručuj zásilky trvale včas", category: "quality", iconKey: "badge-icon-always-on-time", metric: "on_time_deliveries", tiers: { bronze: 10, silver: 50, gold: 200, platinum: 500 }, active: true },
+        { code: "pod_professional", name: "POD profesionál", description: "Sbírej kompletní doklady o doručení", category: "quality", iconKey: "badge-icon-pod-professional", metric: "complete_pods", tiers: { bronze: 10, silver: 50, gold: 250, platinum: 1000 }, active: true },
+        { code: "multi_stop_master", name: "Mistr vícezastávkových tras", description: "Zvládej vícezastávkové trasy mistrovsky", category: "delivery", iconKey: "badge-icon-multi-stop-master", metric: "multi_stop_routes", tiers: { bronze: 10, silver: 50, gold: 200, platinum: 500 }, active: true },
+        { code: "reliable_partner", name: "Spolehlivý partner", description: "Buď pravidelně aktivní jako kurýr", category: "reliability", iconKey: "badge-icon-reliable-partner", metric: "active_days", tiers: { bronze: 7, silver: 30, gold: 180, platinum: 365 }, active: true },
+        { code: "gps_guardian", name: "Strážce GPS", description: "Udržuj GPS dostupnou během aktivní směny", category: "reliability", iconKey: "badge-icon-gps-guardian", metric: "days_gps_over_90_percent", tiers: { bronze: 7, silver: 30, gold: 90, platinum: 365 }, active: false },
+        { code: "customer_favorite", name: "Oblíbenec zákazníků", description: "Získávej hodnocení 5 hvězd od zákazníků", category: "quality", iconKey: "badge-icon-customer-favorite", metric: "five_star_ratings", tiers: { bronze: 5, silver: 25, gold: 100, platinum: 250 }, active: true },
+        { code: "kilometer_hero", name: "Kilometrový hrdina", description: "Najezdí co nejvíce km při aktivních zakázkách", category: "delivery", iconKey: "badge-icon-kilometer-hero", metric: "active_ride_km", tiers: { bronze: 100, silver: 1000, gold: 5000, platinum: 10000 }, active: false },
+        { code: "team_player", name: "Týmový hráč", description: "Získej manuální ocenění od dispečera", category: "special", iconKey: "badge-icon-team-player", metric: "dispatcher_team_awards", tiers: { bronze: 1, silver: 5, gold: 15, platinum: 30 }, active: true },
+        { code: "perfect_week", name: "Perfektní týden", description: "Splni všechny týdenní výzvy", category: "achievement", iconKey: "badge-icon-perfect-week", metric: "perfect_weeks", tiers: { bronze: 1, silver: 4, gold: 12, platinum: 26 }, active: true },
+        { code: "deliveries_250", name: "250 doručení", description: "Dokonči velké množství zásilek", category: "milestone", iconKey: "badge-icon-deliveries-250", metric: "rides_completed", tiers: { bronze: 250, silver: 500, gold: 750, platinum: 1000 }, active: true },
+        { code: "k4y_legend", name: "Legenda K4Y", description: "Dosáhni nejvyšších levelů v Kuryr4You", category: "milestone", iconKey: "badge-icon-k4y-legend", metric: "level", tiers: { bronze: 10, silver: 15, gold: 20, platinum: 30 }, active: true },
+      ]
+      for (const b of badges) {
+        const existing = await ctx.db.query("badgeDefinitions").withIndex("by_code", q => q.eq("code", b.code)).first()
+        if (!existing) await ctx.db.insert("badgeDefinitions", b)
+      }
+  
+      console.log("[gamification] seed complete")
+}
+
+type ChallengeCadence = "daily" | "weekly" | "monthly"
+
+function pragueParts(ts: number) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Prague",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(ts))
+  const value = (type: string) => Number(parts.find(part => part.type === type)?.value)
+  return { year: value("year"), month: value("month"), day: value("day") }
+}
+
+function zonedMidnight(year: number, month: number, day: number): number {
+  const guess = Date.UTC(year, month - 1, day)
+  const observed = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Prague",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(guess))
+  const value = (type: string) => Number(observed.find(part => part.type === type)?.value)
+  const observedUtc = Date.UTC(
+    value("year"),
+    value("month") - 1,
+    value("day"),
+    value("hour"),
+    value("minute"),
+    value("second"),
+  )
+  return guess + (guess - observedUtc)
+}
+
+export function periodBounds(cadence: ChallengeCadence, ts: number): { startsAt: number; expiresAt: number } {
+  const { year, month, day } = pragueParts(ts)
+  let startYear = year
+  let startMonth = month
+  let startDay = day
+
+  if (cadence === "weekly") {
+    const localNoon = new Date(Date.UTC(year, month - 1, day, 12))
+    const weekday = localNoon.getUTCDay() || 7
+    localNoon.setUTCDate(localNoon.getUTCDate() - weekday + 1)
+    startYear = localNoon.getUTCFullYear()
+    startMonth = localNoon.getUTCMonth() + 1
+    startDay = localNoon.getUTCDate()
+  } else if (cadence === "monthly") {
+    startDay = 1
+  }
+
+  const startsAt = zonedMidnight(startYear, startMonth, startDay)
+  const endDate = new Date(Date.UTC(startYear, startMonth - 1, startDay))
+  if (cadence === "daily") endDate.setUTCDate(endDate.getUTCDate() + 1)
+  if (cadence === "weekly") endDate.setUTCDate(endDate.getUTCDate() + 7)
+  if (cadence === "monthly") endDate.setUTCMonth(endDate.getUTCMonth() + 1)
+  return {
+    startsAt,
+    expiresAt: zonedMidnight(endDate.getUTCFullYear(), endDate.getUTCMonth() + 1, endDate.getUTCDate()),
+  }
+}
+
+async function ensureCurrentSeason(ctx: MutationCtx, now: number): Promise<string> {
+  const key = periodKey("monthly", now)
+  const existing = await ctx.db.query("gamificationSeasons").withIndex("by_key", q => q.eq("key", key)).first()
+  if (!existing) {
+    const { startsAt, expiresAt } = periodBounds("monthly", now)
+    await ctx.db.insert("gamificationSeasons", {
+      key,
+      name: `Sezóna ${key}`,
+      startsAt,
+      endsAt: expiresAt,
+      status: "active",
+    })
+  }
+  return key
+}
+
+async function ensureDriverChallenges(
+  ctx: MutationCtx,
+  driverId: Id<"users">,
+  now: number,
+): Promise<void> {
+  const templates = await ctx.db.query("challengeTemplates").collect()
+  for (const cadence of ["daily", "weekly", "monthly"] as const) {
+    const pk = periodKey(cadence, now)
+    const existing = await ctx.db
+      .query("driverChallenges")
+      .withIndex("by_driver_period", q => q.eq("driverId", driverId).eq("periodKey", pk))
+      .collect()
+    const existingTemplates = new Set(existing.map(item => String(item.templateId)))
+    const { startsAt, expiresAt } = periodBounds(cadence, now)
+
+    const rides = await ctx.db
+      .query("rides")
+      .withIndex("by_driver", q => q.eq("driverId", driverId))
+      .collect()
+    const workload = rides.filter(ride =>
+      ride.requestedPickupAt >= startsAt && ride.requestedPickupAt < expiresAt
+    ).length
+
+    for (const template of templates) {
+      if (
+        !template.active ||
+        template.cadence !== cadence ||
+        !SUPPORTED_CHALLENGE_METRICS.has(template.metric) ||
+        existingTemplates.has(String(template._id)) ||
+        (template.validFrom !== undefined && template.validFrom > now) ||
+        (template.validTo !== undefined && template.validTo <= now)
+      ) continue
+
+      const adaptiveIndex = workload >= 6 ? 2 : workload >= 3 ? 1 : 0
+      const target = template.target ?? template.adaptiveTargets?.[adaptiveIndex] ?? 1
+      await ctx.db.insert("driverChallenges", {
+        driverId,
+        templateId: template._id,
+        periodKey: pk,
+        progress: 0,
+        target,
+        status: "active",
+        xpReward: template.xpReward,
+        startsAt,
+        expiresAt,
+      })
+    }
+  }
+}
+
+async function challengeProgress(
+  ctx: MutationCtx,
+  driverId: Id<"users">,
+  challenge: Doc<"driverChallenges">,
+  template: Doc<"challengeTemplates">,
+): Promise<{ progress: number; eligible: boolean }> {
+  const events = await ctx.db
+    .query("gamificationEvents")
+    .withIndex("by_driver_time", q =>
+      q.eq("driverId", driverId)
+        .gte("occurredAt", challenge.startsAt)
+        .lt("occurredAt", challenge.expiresAt)
+    )
+    .collect()
+  const count = (type: string) => events.filter(event => event.type === type).length
+  const completed = count("ride_completed")
+  const failed = count("ride_failed")
+  const workload = completed + failed
+  const ratingValues = events
+    .filter(event => event.type === "rating_received" && event.metadata)
+    .map(event => {
+      try {
+        return Number(JSON.parse(event.metadata!).rating)
+      } catch {
+        return 0
+      }
+    })
+    .filter(rating => rating >= 1 && rating <= 5)
+
+  let progress = 0
+  switch (template.metric) {
+    case "rides_completed":
+      progress = completed
+      break
+    case "pod_completion_ratio":
+      progress = completed > 0 ? count("pod_complete") / completed : 0
+      break
+    case "on_time_ratio":
+      progress = completed > 0
+        ? Math.min(1, (count("pickup_on_time") + count("delivery_on_time")) / (completed * 2))
+        : 0
+      break
+    case "vending_checklist_ratio": {
+      const visits = count("vending_visit_completed")
+      progress = visits > 0 ? count("vending_checklist_complete") / visits : 0
+      break
+    }
+    case "multi_stop_routes":
+      progress = new Set(
+        events
+          .filter(event => event.type === "intermediate_stop" && event.rideId)
+          .map(event => String(event.rideId))
+      ).size
+      break
+    case "active_days":
+      progress = new Set(
+        events
+          .filter(event => event.xp > 0 && !["challenge_completed", "manual_award"].includes(event.type))
+          .map(event => pragueDateString(event.occurredAt))
+      ).size
+      break
+    case "average_rating":
+      progress = ratingValues.length
+        ? ratingValues.reduce((sum, rating) => sum + rating, 0) / ratingValues.length
+        : 0
+      break
+    case "completion_ratio":
+      progress = workload > 0 ? completed / workload : 0
+      break
+  }
+
+  const eligible =
+    workload >= (template.minimumWorkload ?? 0) &&
+    ratingValues.length >= (template.minimumRatings ?? 0)
+  return { progress: Math.min(progress, challenge.target), eligible }
+}
+
 // ─── Internal: seed šablon a badge definic při prvním startu ───────────────
 
 export const seedGamificationData = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    // Challenge templates
-    const templates = [
-      { code: "daily_rides", name: "Denní zásilky", description: "Dokonči stanovený počet zásilek dnes", cadence: "daily" as const, metric: "rides_completed", adaptiveTargets: [1, 2, 3], xpReward: 100, active: true },
-      { code: "daily_complete_pod", name: "Kompletní POD", description: "Ulož kompletní doklad u všech dnešních zásilek", cadence: "daily" as const, metric: "pod_completion_ratio", target: 1, xpReward: 75, active: true },
-      { code: "daily_on_time", name: "Dochvilnost", description: "Dodrž všechny časové sloty dnes", cadence: "daily" as const, metric: "on_time_ratio", target: 1, xpReward: 100, active: true },
-      { code: "daily_gps_available", name: "GPS připravena", description: "Měj GPS dostupnou alespoň 90 % aktivní směny", cadence: "daily" as const, metric: "gps_availability_ratio", target: 0.9, xpReward: 50, active: true },
-      { code: "daily_vending_checklists", name: "Vending checklisty", description: "Dokonči všechny povinné vending checklisty", cadence: "daily" as const, metric: "vending_checklist_ratio", target: 1, xpReward: 75, active: true },
-      { code: "weekly_reliable", name: "Spolehlivý týden", description: "Alespoň 95 % zásilek doručeno včas tento týden", cadence: "weekly" as const, metric: "on_time_ratio", target: 0.95, xpReward: 400, active: true },
-      { code: "weekly_pod_pro", name: "POD profesionál", description: "100 % zásilek s dokladem tento týden", cadence: "weekly" as const, metric: "pod_completion_ratio", target: 1, xpReward: 350, active: true },
-      { code: "weekly_multi_stop", name: "Mistr tras", description: "Dokonči vícezastávkové trasy tento týden", cadence: "weekly" as const, metric: "multi_stop_routes", adaptiveTargets: [1, 3, 5], xpReward: 350, active: true },
-      { code: "weekly_streak", name: "Série aktivity", description: "Buď aktivní alespoň 5 různých dní tento týden", cadence: "weekly" as const, metric: "active_days", target: 5, xpReward: 500, active: true },
-      { code: "weekly_no_claim", name: "Bez reklamace", description: "Žádná potvrzená reklamace tento týden", cadence: "weekly" as const, metric: "confirmed_claims", target: 0, minimumWorkload: 5, xpReward: 300, active: true },
-      { code: "monthly_volume", name: "Objem zásilek", description: "Dokonči cílový počet zásilek tento měsíc", cadence: "monthly" as const, metric: "rides_completed", adaptiveTargets: [25, 50, 100], xpReward: 1200, active: true },
-      { code: "monthly_on_time", name: "Dochvilnost měsíce", description: "95 % včasných doručení při min. 20 zásilkách", cadence: "monthly" as const, metric: "on_time_ratio", target: 0.95, minimumWorkload: 20, xpReward: 1200, active: true },
-      { code: "monthly_rating", name: "Zákaznické hodnocení", description: "Průměrné hodnocení min. 4,8 při min. 10 hodnoceních", cadence: "monthly" as const, metric: "average_rating", target: 4.8, minimumRatings: 10, xpReward: 1500, active: true },
-      { code: "monthly_success", name: "Úspěšnost doručení", description: "98 % úspěšně dokončených zásilek", cadence: "monthly" as const, metric: "completion_ratio", target: 0.98, minimumWorkload: 20, xpReward: 1500, active: true },
-      { code: "monthly_pod", name: "POD měsíce", description: "Kompletní POD u min. 95 % doručení", cadence: "monthly" as const, metric: "pod_completion_ratio", target: 0.95, minimumWorkload: 20, xpReward: 1000, active: true },
-    ]
-    for (const t of templates) {
-      const existing = await ctx.db.query("challengeTemplates").withIndex("by_code", q => q.eq("code", t.code)).first()
-      if (!existing) await ctx.db.insert("challengeTemplates", t)
-    }
-
-    // Badge definitions
-    const badges = [
-      { code: "first_delivery", name: "První zásilka", description: "Dokonči první zásilku jako kurýr", category: "delivery", iconKey: "badge-icon-first-delivery", metric: "rides_completed", tiers: { bronze: 1, silver: 10, gold: 50, platinum: 100 }, active: true },
-      { code: "always_on_time", name: "Vždy včas", description: "Doručuj zásilky trvale včas", category: "quality", iconKey: "badge-icon-always-on-time", metric: "on_time_deliveries", tiers: { bronze: 10, silver: 50, gold: 200, platinum: 500 }, active: true },
-      { code: "pod_professional", name: "POD profesionál", description: "Sbírej kompletní doklady o doručení", category: "quality", iconKey: "badge-icon-pod-professional", metric: "complete_pods", tiers: { bronze: 10, silver: 50, gold: 250, platinum: 1000 }, active: true },
-      { code: "multi_stop_master", name: "Mistr vícezastávkových tras", description: "Zvládej vícezastávkové trasy mistrovsky", category: "delivery", iconKey: "badge-icon-multi-stop-master", metric: "multi_stop_routes", tiers: { bronze: 10, silver: 50, gold: 200, platinum: 500 }, active: true },
-      { code: "reliable_partner", name: "Spolehlivý partner", description: "Buď pravidelně aktivní jako kurýr", category: "reliability", iconKey: "badge-icon-reliable-partner", metric: "active_days", tiers: { bronze: 7, silver: 30, gold: 180, platinum: 365 }, active: true },
-      { code: "gps_guardian", name: "Strážce GPS", description: "Udržuj GPS dostupnou během aktivní směny", category: "reliability", iconKey: "badge-icon-gps-guardian", metric: "days_gps_over_90_percent", tiers: { bronze: 7, silver: 30, gold: 90, platinum: 365 }, active: true },
-      { code: "customer_favorite", name: "Oblíbenec zákazníků", description: "Získávej hodnocení 5 hvězd od zákazníků", category: "quality", iconKey: "badge-icon-customer-favorite", metric: "five_star_ratings", tiers: { bronze: 5, silver: 25, gold: 100, platinum: 250 }, active: true },
-      { code: "kilometer_hero", name: "Kilometrový hrdina", description: "Najezdí co nejvíce km při aktivních zakázkách", category: "delivery", iconKey: "badge-icon-kilometer-hero", metric: "active_ride_km", tiers: { bronze: 100, silver: 1000, gold: 5000, platinum: 10000 }, active: true },
-      { code: "team_player", name: "Týmový hráč", description: "Získej manuální ocenění od dispečera", category: "special", iconKey: "badge-icon-team-player", metric: "dispatcher_team_awards", tiers: { bronze: 1, silver: 5, gold: 15, platinum: 30 }, active: true },
-      { code: "perfect_week", name: "Perfektní týden", description: "Splni všechny týdenní výzvy", category: "achievement", iconKey: "badge-icon-perfect-week", metric: "perfect_weeks", tiers: { bronze: 1, silver: 4, gold: 12, platinum: 26 }, active: true },
-      { code: "deliveries_250", name: "250 doručení", description: "Dokonči velké množství zásilek", category: "milestone", iconKey: "badge-icon-deliveries-250", metric: "rides_completed", tiers: { bronze: 250, silver: 500, gold: 750, platinum: 1000 }, active: true },
-      { code: "k4y_legend", name: "Legenda K4Y", description: "Dosáhni nejvyšších levelů v Kuryr4You", category: "milestone", iconKey: "badge-icon-k4y-legend", metric: "level", tiers: { bronze: 10, silver: 15, gold: 20, platinum: 30 }, active: true },
-    ]
-    for (const b of badges) {
-      const existing = await ctx.db.query("badgeDefinitions").withIndex("by_code", q => q.eq("code", b.code)).first()
-      if (!existing) await ctx.db.insert("badgeDefinitions", b)
-    }
-
-    console.log("[gamification] seed complete")
+    await ensureGamificationData(ctx)
     return null
   },
 })

@@ -169,6 +169,7 @@ const tabs: Array<{ key: MainTab; label: string; icon: IconName; activeIcon: Ico
   { key: "home", label: "Přehled", icon: "grid-outline", activeIcon: "grid" },
   { key: "rides", label: "Zakázky", icon: "cube-outline", activeIcon: "cube" },
   { key: "chat", label: "Chat", icon: "chatbubbles-outline", activeIcon: "chatbubbles" },
+  { key: "gamification", label: "Výzvy", icon: "trophy-outline", activeIcon: "trophy" },
   { key: "vending", label: "Vending", icon: "storefront-outline", activeIcon: "storefront" },
   { key: "availability", label: "Směny", icon: "calendar-outline", activeIcon: "calendar" },
   { key: "profile", label: "Profil", icon: "person-outline", activeIcon: "person" },

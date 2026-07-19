@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQuery } from "convex/react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { GamificationSummaryCard } from "../components/GamificationSummaryCard";
 import { RideCard } from "../components/RideCard";
 import { AppUpdateCard } from "../components/AppUpdateCard";
 import { AppButton, Card, EmptyState, PageHeader, Screen } from "../components/ui";
@@ -18,6 +19,7 @@ export function DashboardScreen({
   onGpsToggle,
   onOpenRide,
   onOpenRides,
+  onOpenGamification,
   onOpenNotifications,
 }: {
   user: DriverUser;
@@ -27,6 +29,7 @@ export function DashboardScreen({
   onGpsToggle: () => void;
   onOpenRide: (ride: Ride) => void;
   onOpenRides: () => void;
+  onOpenGamification: () => void;
   onOpenNotifications: () => void;
 }) {
   const rides = useQuery(api.rides.getDriverRides, {}) as Ride[] | undefined;
@@ -51,6 +54,8 @@ export function DashboardScreen({
       />
 
       <AppUpdateCard />
+
+      <GamificationSummaryCard onPress={onOpenGamification} />
 
       <Card style={[styles.gpsCard, tracking && styles.gpsCardActive]}>
         <View style={styles.gpsTop}>

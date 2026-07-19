@@ -653,7 +653,9 @@ export const driverCompleteVisit = mutation({
     const { userId, user } = await requireAuth(ctx)
     const visit = await ctx.db.get(visitId)
     if (!visit || visit.driverId !== userId) throw new Error("Přístup odepřen")
+    if (visit.status === "completed") throw new Error("Návštěva už byla dokončena")
     // Verify checklist complete if exists
+    let checklistComplete = false
     if (visit.checklistTemplateId) {
       const checklist = await ctx.db
         .query("visitChecklists")
@@ -663,6 +665,7 @@ export const driverCompleteVisit = mutation({
         const required = checklist.items.filter((_, i) => i >= 0) // all
         const allDone = required.every((item) => item.completed)
         if (!allDone) throw new Error("Musíte dokončit všechny povinné položky checklistu")
+        checklistComplete = allDone
       }
     }
     const now = Date.now()
@@ -688,14 +691,23 @@ export const driverCompleteVisit = mutation({
       userId,
       timestamp: now,
     })
-    // XP za dokončení servisní návštěvy
+    // XP podle centrálního gamifikačního kontraktu.
     await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
       driverId: userId,
-      eventKey: `vending_visit_completed:${visitId}`,
+      eventKey: `visit:${visitId}:completed`,
       type: "vending_visit_completed",
-      xp: 25,
+      xp: 80,
       visitId,
     })
+    if (checklistComplete) {
+      await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
+        driverId: userId,
+        eventKey: `visit:${visitId}:checklist`,
+        type: "vending_checklist_complete",
+        xp: 20,
+        visitId,
+      })
+    }
 
     // Send email notification to client contact
     const client = await ctx.db.get(visit.clientId)
