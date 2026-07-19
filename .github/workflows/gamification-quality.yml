@@ -24,6 +24,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Generate routes and build web
+        run: npm run build
       - name: Typecheck web and Convex
         run: npx tsc --noEmit
       - name: Test gamification rules
