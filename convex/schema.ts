@@ -828,6 +828,7 @@ export default defineSchema({
     lifetimeXp: v.number(),
     level: v.number(),
     seasonXp: v.number(),
+    seasonKey: v.optional(v.string()),
     currentStreak: v.number(),
     longestStreak: v.number(),
     lastActiveDate: v.optional(v.string()), // YYYY-MM-DD in Europe/Prague
