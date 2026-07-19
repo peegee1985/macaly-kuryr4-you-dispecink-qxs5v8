@@ -1,6 +1,6 @@
 {
   "name": "kuryr4you-driver",
-  "version": "0.5.0",
+  "version": "0.7.0",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -29,6 +29,7 @@
     "react-native": "0.86.0",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-signature-canvas": "^5.1.0",
+    "react-native-svg": "15.15.4",
     "react-native-webview": "^13.16.1"
   },
   "devDependencies": {

@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQuery } from "convex/react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { XpStarArtwork } from "./GamificationArtwork";
 import { api } from "../lib/api";
 import { colors, radius, spacing } from "../theme";
 
@@ -39,9 +40,7 @@ export function GamificationSummaryCard({ onPress }: { onPress: () => void }) {
       onPress={onPress}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
-      <View style={styles.icon}>
-        <Ionicons name="trophy" color={colors.primaryText} size={23} />
-      </View>
+      <XpStarArtwork size={46} />
       <View style={styles.copy}>
         <View style={styles.topRow}>
           <Text style={styles.title}>{profile ? `Level ${profile.level} · ${profile.title}` : "Výzvy a odznaky"}</Text>
@@ -72,14 +71,6 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   pressed: { opacity: 0.78 },
-  icon: {
-    width: 46,
-    height: 46,
-    borderRadius: 15,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   copy: { flex: 1 },
   topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   title: { color: colors.text, fontSize: 14, fontWeight: "800", flex: 1 },
