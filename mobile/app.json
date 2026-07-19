@@ -28,7 +28,8 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_LOCATION",
         "android.permission.POST_NOTIFICATIONS",
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ],
       "predictiveBackGestureEnabled": true
     },
@@ -64,6 +65,12 @@
       ],
       "./plugins/withStandaloneApk",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5fa12682-2a6c-4798-96e5-8b7f3f9bf241"
+      }
+    },
+    "owner": "peegee85"
   }
 }

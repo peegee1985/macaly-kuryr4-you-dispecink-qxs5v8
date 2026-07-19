@@ -22,6 +22,12 @@
         "backgroundColor": "#0F111A"
       },
       "predictiveBackGestureEnabled": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f51e480b-2a41-474f-8caf-0342083b4f3e"
+      }
+    },
+    "owner": "peegee85"
   }
 }
