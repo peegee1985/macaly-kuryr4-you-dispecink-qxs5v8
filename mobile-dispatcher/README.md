@@ -2,6 +2,9 @@
 
 Samostatná nativní Expo/React Native aplikace pro dispečery. Používá stejný Convex backend jako webový dispečink, ale má vlastní Android balíček `cz.kuryr4you.dispatcher` a vlastní APK workflow.
 
+Roadmapa skutečných push notifikací, akcí v oznámeních a dispečerského Android
+widgetu je v [`../docs/NATIVE_ANDROID_PUSH_ACTIONS_WIDGET_ROADMAP.md`](../docs/NATIVE_ANDROID_PUSH_ACTIONS_WIDGET_ROADMAP.md).
+
 ## Lokální spuštění
 
 ```bash
