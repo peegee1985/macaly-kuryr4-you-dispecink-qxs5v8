@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" aria-hidden="true">
+  <defs>
+    <linearGradient id="bronze-gradient" x1="24" y1="16" x2="104" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F1B06A"/><stop offset="0.48" stop-color="#CD7F32"/><stop offset="1" stop-color="#7C3F16"/>
+    </linearGradient>
+    <linearGradient id="silver-gradient" x1="24" y1="16" x2="104" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC"/><stop offset="0.5" stop-color="#D7DEE8"/><stop offset="1" stop-color="#7E8A9A"/>
+    </linearGradient>
+    <linearGradient id="gold-gradient" x1="24" y1="16" x2="104" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF0A3"/><stop offset="0.45" stop-color="#F6C445"/><stop offset="1" stop-color="#B77905"/>
+    </linearGradient>
+    <linearGradient id="platinum-gradient" x1="20" y1="16" x2="108" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/><stop offset="0.32" stop-color="#B9F2FF"/><stop offset="0.7" stop-color="#8BE9FD"/><stop offset="1" stop-color="#6D7CFF"/>
+    </linearGradient>
+    <filter id="platinum-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <symbol id="tier-locked" viewBox="0 0 128 128">
+      <path d="M64 7 108 25v34c0 29-18 50-44 62C38 109 20 88 20 59V25L64 7Z" fill="#202431" stroke="#64748B" stroke-width="7"/>
+      <circle cx="64" cy="61" r="40" fill="#171A24" stroke="#334155" stroke-width="3" stroke-dasharray="5 5"/>
+    </symbol>
+    <symbol id="tier-bronze" viewBox="0 0 128 128">
+      <path d="M64 7 108 25v34c0 29-18 50-44 62C38 109 20 88 20 59V25L64 7Z" fill="url(#bronze-gradient)"/>
+      <circle cx="64" cy="61" r="40" fill="#171A24" stroke="#CD7F32" stroke-width="4"/>
+      <path d="M32 31 40 35M96 31 88 35" stroke="#FFD0A0" stroke-width="4" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="tier-silver" viewBox="0 0 128 128">
+      <path d="M64 7 108 25v34c0 29-18 50-44 62C38 109 20 88 20 59V25L64 7Z" fill="url(#silver-gradient)"/>
+      <circle cx="64" cy="61" r="40" fill="#171A24" stroke="#D7DEE8" stroke-width="4"/>
+      <path d="M33 30 43 35M95 30 85 35" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="tier-gold" viewBox="0 0 128 128">
+      <path d="M64 7 108 25v34c0 29-18 50-44 62C38 109 20 88 20 59V25L64 7Z" fill="url(#gold-gradient)"/>
+      <circle cx="64" cy="61" r="40" fill="#171A24" stroke="#F6C445" stroke-width="4"/>
+      <path d="m31 31 10 5M97 31l-10 5M64 14v8" stroke="#FFF0A3" stroke-width="4" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="tier-platinum" viewBox="0 0 128 128">
+      <g filter="url(#platinum-glow)">
+        <path d="M64 7 108 25v34c0 29-18 50-44 62C38 109 20 88 20 59V25L64 7Z" fill="url(#platinum-gradient)"/>
+        <circle cx="64" cy="61" r="40" fill="#171A24" stroke="#B9F2FF" stroke-width="4"/>
+      </g>
+      <path d="m31 30 11 6M97 30l-11 6M64 13v10M24 57h9M104 57h-9" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+    </symbol>
+
+    <symbol id="badge-icon-first-delivery" viewBox="0 0 128 128">
+      <g fill="none" stroke="#F1F5F9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m43 48 21-11 21 11-21 11-21-11Z"/><path d="M43 48v25l21 12 21-12V48M64 59v26"/>
+        <path d="m76 73 7 7 13-15" stroke="#22C55E"/>
+      </g>
+    </symbol>
+    <symbol id="badge-icon-always-on-time" viewBox="0 0 128 128">
+      <g fill="none" stroke="#F1F5F9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="61" cy="61" r="27"/><path d="M61 45v18l12 7M48 28h26"/>
+        <path d="m76 83 7 7 14-17" stroke="#22C55E"/>
+      </g>
+    </symbol>
+    <symbol id="badge-icon-pod-professional" viewBox="0 0 128 128">
+      <g fill="none" stroke="#F1F5F9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="36" y="40" width="56" height="42" rx="7"/><path d="m50 40 5-8h18l5 8"/><circle cx="64" cy="60" r="11"/>
+        <path d="M42 91c12-9 16 8 27-2 8-8 13 4 21-2" stroke="#F59E0B"/>
+      </g>
+    </symbol>
+    <symbol id="badge-icon-multi-stop-master" viewBox="0 0 128 128">
+      <g fill="none" stroke="#F1F5F9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="41" cy="43" r="8"/><circle cx="86" cy="58" r="8"/><circle cx="48" cy="86" r="8"/>
+        <path d="M49 43h14c14 0 14 15 15 15M78 66c-2 12-10 20-22 20"/>
+        <path d="m60 34 9 9-9 9" stroke="#F59E0B"/>
+      </g>
+    </symbol>
+    <symbol id="badge-icon-reliable-partner" viewBox="0 0 128 128">
+      <g fill="none" stroke="#F1F5F9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M64 32 90 42v20c0 17-10 29-26 37-16-8-26-20-26-37V42l26-10Z"/>
+        <path d="m51 64 9 9 18-21" stroke="#22C55E"/>
+      </g>
+    </symbol>
+    <symbol id="badge-icon-gps-guardian" viewBox="0 0 128 128">
+      <g fill="none" stroke="#F1F5F9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M64 97S39 73 39 55a25 25 0 0 1 50 0c0 18-25 42-25 42Z"/><circle cx="64" cy="55" r="9"/>
+        <path d="M30 55h-7M105 55h-7M64 21v-7" stroke="#0EA5E9"/>
+      </g>
+    </symbol>
+    <symbol id="badge-icon-customer-favorite" viewBox="0 0 128 128">
+      <g fill="none" stroke="#F1F5F9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M64 92 40 70c-16-15-5-36 11-36 8 0 13 5 13 5s5-5 13-5c16 0 27 21 11 36L64 92Z"/>
+        <path d="m64 48 4 9 10 1-8 7 3 10-9-5-9 5 3-10-8-7 10-1 4-9Z" fill="#F59E0B" stroke="#F59E0B"/>
+      </g>
+    </symbol>
+    <symbol id="badge-icon-kilometer-hero" viewBox="0 0 128 128">
+      <g fill="none" stroke="#F1F5F9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M47 98c1-22 3-44 9-68M81 98c-1-22-3-44-9-68"/><path d="M64 39v12M64 63v12M64 87v8" stroke="#F59E0B"/>
+        <path d="M38 98h52"/>
+      </g>
+    </symbol>
+    <symbol id="badge-icon-team-player" viewBox="0 0 128 128">
+      <g fill="none" stroke="#F1F5F9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="64" cy="47" r="12"/><circle cx="40" cy="55" r="9"/><circle cx="88" cy="55" r="9"/>
+        <path d="M45 91c1-17 8-25 19-25s18 8 19 25M24 88c1-13 7-20 16-20M104 88c-1-13-7-20-16-20"/>
+      </g>
+    </symbol>
+    <symbol id="badge-icon-perfect-week" viewBox="0 0 128 128">
+      <g fill="none" stroke="#F1F5F9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="34" y="36" width="60" height="56" rx="7"/><path d="M34 52h60M48 29v14M80 29v14"/>
+        <path d="m49 72 10 10 21-23" stroke="#22C55E"/>
+      </g>
+    </symbol>
+    <symbol id="badge-icon-deliveries-250" viewBox="0 0 128 128">
+      <g fill="none" stroke="#F1F5F9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M45 36h38v15c0 17-8 28-19 28S45 68 45 51V36Z"/><path d="M45 43H32v8c0 10 7 17 17 17M83 43h13v8c0 10-7 17-17 17M64 79v13M49 96h30"/>
+      </g>
+      <text x="64" y="59" fill="#F59E0B" font-family="Exo 2, sans-serif" font-size="18" font-weight="800" text-anchor="middle">250</text>
+    </symbol>
+    <symbol id="badge-icon-k4y-legend" viewBox="0 0 128 128">
+      <g fill="none" stroke="#F1F5F9" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m35 74-5-35 21 15 13-25 13 25 21-15-5 35H35Z"/><path d="M38 86h52" stroke="#F59E0B"/>
+      </g>
+      <text x="64" y="69" fill="#F59E0B" font-family="Exo 2, sans-serif" font-size="15" font-weight="800" text-anchor="middle">K4Y</text>
+    </symbol>
+  </defs>
+</svg>
+

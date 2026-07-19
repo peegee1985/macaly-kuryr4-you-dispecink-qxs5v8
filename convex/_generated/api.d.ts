@@ -20,6 +20,7 @@ import type * as crons from "../crons.js";
 import type * as documents from "../documents.js";
 import type * as email from "../email.js";
 import type * as fuel from "../fuel.js";
+import type * as gamification from "../gamification.js";
 import type * as gps from "../gps.js";
 import type * as guestCheckout from "../guestCheckout.js";
 import type * as guestOrders from "../guestOrders.js";
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   documents: typeof documents;
   email: typeof email;
   fuel: typeof fuel;
+  gamification: typeof gamification;
   gps: typeof gps;
   guestCheckout: typeof guestCheckout;
   guestOrders: typeof guestOrders;

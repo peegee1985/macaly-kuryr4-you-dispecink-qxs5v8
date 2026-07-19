@@ -820,4 +820,106 @@ export default defineSchema({
   })
     .index("by_entity", ["entityType", "entityId"])
     .index("by_user", ["userId"]),
+
+  // ─── Gamification ──────────────────────────────────────────────────────────
+
+  driverGamificationProfiles: defineTable({
+    driverId: v.id("users"),
+    lifetimeXp: v.number(),
+    level: v.number(),
+    seasonXp: v.number(),
+    currentStreak: v.number(),
+    longestStreak: v.number(),
+    lastActiveDate: v.optional(v.string()), // YYYY-MM-DD in Europe/Prague
+    updatedAt: v.number(),
+    // Pending level-up notification flag
+    pendingLevelUp: v.optional(v.boolean()),
+    pendingLevelUpLevel: v.optional(v.number()),
+    pendingLevelUpTitle: v.optional(v.string()),
+  }).index("by_driver", ["driverId"]),
+
+  gamificationEvents: defineTable({
+    driverId: v.id("users"),
+    eventKey: v.string(), // e.g. "ride:abc123:delivered"
+    type: v.string(),     // e.g. "ride_completed", "pod_complete"
+    xp: v.number(),
+    rideId: v.optional(v.id("rides")),
+    visitId: v.optional(v.id("serviceVisits")),
+    occurredAt: v.number(),
+    metadata: v.optional(v.string()), // JSON
+    // For manual awards/corrections by dispatcher
+    isManual: v.optional(v.boolean()),
+    dispatcherId: v.optional(v.id("users")),
+    reason: v.optional(v.string()),
+    originalXp: v.optional(v.number()),
+  })
+    .index("by_driver_time", ["driverId", "occurredAt"])
+    .index("by_event_key", ["eventKey"]),
+
+  challengeTemplates: defineTable({
+    code: v.string(),
+    name: v.string(),
+    description: v.string(),
+    cadence: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
+    metric: v.string(),
+    target: v.optional(v.number()),
+    adaptiveTargets: v.optional(v.array(v.number())),
+    xpReward: v.number(),
+    badgeCode: v.optional(v.string()),
+    minimumWorkload: v.optional(v.number()),
+    minimumRatings: v.optional(v.number()),
+    active: v.boolean(),
+    validFrom: v.optional(v.number()),
+    validTo: v.optional(v.number()),
+  }).index("by_code", ["code"]),
+
+  driverChallenges: defineTable({
+    driverId: v.id("users"),
+    templateId: v.id("challengeTemplates"),
+    periodKey: v.string(), // e.g. "2025-W03", "2025-07", "2025-07-18"
+    progress: v.number(),
+    target: v.number(),
+    status: v.union(v.literal("active"), v.literal("completed"), v.literal("expired"), v.literal("claimed")),
+    xpReward: v.number(),
+    startsAt: v.number(),
+    expiresAt: v.number(),
+    completedAt: v.optional(v.number()),
+    claimedAt: v.optional(v.number()),
+  })
+    .index("by_driver_period", ["driverId", "periodKey"])
+    .index("by_status", ["status"]),
+
+  badgeDefinitions: defineTable({
+    code: v.string(),
+    name: v.string(),
+    description: v.string(),
+    category: v.string(),
+    iconKey: v.string(),
+    metric: v.string(),
+    tiers: v.object({
+      bronze: v.number(),
+      silver: v.number(),
+      gold: v.number(),
+      platinum: v.number(),
+    }),
+    active: v.boolean(),
+  }).index("by_code", ["code"]),
+
+  driverBadges: defineTable({
+    driverId: v.id("users"),
+    badgeCode: v.string(),
+    tier: v.union(v.literal("bronze"), v.literal("silver"), v.literal("gold"), v.literal("platinum")),
+    awardedAt: v.number(),
+    sourceEventKey: v.string(),
+  })
+    .index("by_driver", ["driverId"])
+    .index("by_driver_badge", ["driverId", "badgeCode"]),
+
+  gamificationSeasons: defineTable({
+    key: v.string(), // e.g. "2025-07"
+    name: v.string(),
+    startsAt: v.number(),
+    endsAt: v.number(),
+    status: v.union(v.literal("active"), v.literal("ended"), v.literal("upcoming")),
+  }).index("by_key", ["key"]),
 })
