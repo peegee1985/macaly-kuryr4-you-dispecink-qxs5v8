@@ -140,4 +140,4 @@ export type Availability = {
   notes?: string;
 };
 
-export type MainTab = "home" | "rides" | "chat" | "vending" | "availability" | "profile";
+export type MainTab = "home" | "rides" | "chat" | "gamification" | "vending" | "availability" | "profile";
