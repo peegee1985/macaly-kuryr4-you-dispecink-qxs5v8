@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "brand": {
+    "background": "#0F111A",
+    "surface": "#171A24",
+    "surfaceElevated": "#202431",
+    "primary": "#F59E0B",
+    "primaryDark": "#B97805",
+    "text": "#F1F5F9",
+    "textMuted": "#94A3B8",
+    "border": "#2B3140",
+    "success": "#22C55E",
+    "info": "#0EA5E9",
+    "danger": "#EF4444"
+  },
+  "tiers": {
+    "locked": { "primary": "#64748B", "secondary": "#334155", "glow": "#00000000" },
+    "bronze": { "primary": "#CD7F32", "secondary": "#7C3F16", "glow": "#CD7F3240" },
+    "silver": { "primary": "#D7DEE8", "secondary": "#7E8A9A", "glow": "#D7DEE840" },
+    "gold": { "primary": "#F6C445", "secondary": "#B77905", "glow": "#F6C44552" },
+    "platinum": { "primary": "#B9F2FF", "secondary": "#6D7CFF", "glow": "#8BE9FD66" }
+  },
+  "badge": { "viewBox": "0 0 128 128", "listSize": 64, "detailSize": 128, "strokeWidth": 6 },
+  "progress": { "height": 10, "radius": 5, "track": "#2B3140", "fill": "#F59E0B" },
+  "radius": { "card": 16, "modal": 20, "pill": 999 },
+  "motion": { "levelUpMs": 850, "progressMs": 350, "reducedMotionMs": 0 },
+  "typography": { "heading": "Exo 2", "body": "Nunito Sans" }
+}
+
