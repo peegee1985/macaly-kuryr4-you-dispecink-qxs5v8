@@ -62,10 +62,10 @@ jobs:
       - name: Napojit projekty na EAS
         run: |
           if ! jq -e '.expo.extra.eas.projectId // empty' mobile/app.json >/dev/null; then
-            (cd mobile && npx eas-cli@21.0.2 project:init --non-interactive)
+            (cd mobile && npx eas-cli@21.0.2 project:init --non-interactive --force)
           fi
           if ! jq -e '.expo.extra.eas.projectId // empty' mobile-dispatcher/app.json >/dev/null; then
-            (cd mobile-dispatcher && npx eas-cli@21.0.2 project:init --non-interactive)
+            (cd mobile-dispatcher && npx eas-cli@21.0.2 project:init --non-interactive --force)
           fi
 
           if ! git diff --quiet -- mobile/app.json mobile-dispatcher/app.json; then
