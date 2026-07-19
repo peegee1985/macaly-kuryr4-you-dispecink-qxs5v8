@@ -1,169 +1,95 @@
+import { ConvexAuthProvider, useAuthActions } from "@convex-dev/auth/react";
+import { ConvexReactClient, useConvexAuth, useQuery } from "convex/react";
 import { StatusBar } from "expo-status-bar";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ForwardRefExoticComponent,
-  type RefAttributes,
-} from "react";
-import {
-  ActivityIndicator,
-  BackHandler,
-  Linking,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import {
-  WebView,
-  type WebViewNavigation,
-} from "react-native-webview";
-import type {
-  AndroidWebViewProps,
-  WebViewHttpErrorEvent,
-} from "react-native-webview/lib/WebViewTypes";
+import { useState } from "react";
+import { Modal, StyleSheet, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
-const DISPATCH_URL = "https://kuryr4you.cz/dispatcer";
-const ALLOWED_HOSTS = new Set(["kuryr4you.cz", "www.kuryr4you.cz"]);
+import { BottomTabs, LoadingView } from "./src/components/ui";
+import { useDispatcherNotifications } from "./src/hooks/useDispatcherNotifications";
+import { api } from "./src/lib/api";
+import { secureAuthStorage } from "./src/lib/storage";
+import { AccessScreen, AccountStateScreen, MissingConfigurationScreen } from "./src/screens/AuthScreens";
+import { ChatScreen } from "./src/screens/ChatScreen";
+import { DashboardScreen } from "./src/screens/DashboardScreen";
+import { MapScreen } from "./src/screens/MapScreen";
+import { MoreScreen } from "./src/screens/MoreScreen";
+import { NewRideScreen } from "./src/screens/NewRideScreen";
+import { NotificationsModal } from "./src/screens/NotificationsModal";
+import { RideDetailModal } from "./src/screens/RideDetailModal";
+import { RidesScreen } from "./src/screens/RidesScreen";
+import { colors } from "./src/theme";
+import type { DispatcherUser, MainTab, Ride } from "./src/types";
 
-type WebViewHandle = {
-  goBack: () => void;
-};
-
-// react-native-webview 13 combines all platform props into an impossible
-// intersection under React Native 0.86. This Android-only shell narrows the
-// public component type while keeping the runtime component unchanged.
-const AndroidWebView = WebView as unknown as ForwardRefExoticComponent<
-  AndroidWebViewProps & RefAttributes<WebViewHandle>
->;
+const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
+const convex = new ConvexReactClient(convexUrl || "https://example.convex.cloud", { unsavedChangesWarning: false });
 
 export default function App() {
+  if (!convexUrl) {
+    return <SafeAreaProvider><StatusBar style="light" /><MissingConfigurationScreen /></SafeAreaProvider>;
+  }
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
-      <DispatcherApp />
+      <ConvexAuthProvider client={convex} storage={secureAuthStorage}>
+        <AuthGate />
+      </ConvexAuthProvider>
     </SafeAreaProvider>
   );
 }
 
-function DispatcherApp() {
-  const webViewRef = useRef<WebViewHandle>(null);
-  const [canGoBack, setCanGoBack] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
-  const [loadError, setLoadError] = useState(false);
+function AuthGate() {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  if (isLoading) return <LoadingView label="Obnovuji přihlášení…" />;
+  if (!isAuthenticated) return <AccessScreen />;
+  return <AuthenticatedApp />;
+}
 
-  useEffect(() => {
-    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (!canGoBack) return false;
-      webViewRef.current?.goBack();
-      return true;
-    });
-    return () => subscription.remove();
-  }, [canGoBack]);
+function AuthenticatedApp() {
+  const user = useQuery(api.users.getMe, {}) as DispatcherUser | null | undefined;
+  const { signOut } = useAuthActions();
+  const logout = () => void signOut();
+  if (user === undefined) return <LoadingView label="Načítám dispečerský profil…" />;
+  if (!user) return <LoadingView label="Profil nebyl nalezen…" />;
+  if (user.role !== "dispatcher") return <AccountStateScreen state="wrong-role" onSignOut={logout} />;
+  if (user.status !== "active") return <AccountStateScreen state="inactive" onSignOut={logout} />;
+  return <DispatcherApp user={user} onSignOut={logout} />;
+}
 
-  const handleNavigation = useCallback((navigation: WebViewNavigation) => {
-    setCanGoBack(navigation.canGoBack);
-  }, []);
+function DispatcherApp({ user, onSignOut }: { user: DispatcherUser; onSignOut: () => void }) {
+  const [tab, setTab] = useState<MainTab>("home");
+  const [selectedRide, setSelectedRide] = useState<Ride | null>(null);
+  const [createVisible, setCreateVisible] = useState(false);
+  const [notificationsVisible, setNotificationsVisible] = useState(false);
+  const rides = useQuery(api.rides.getAllRides, {}) as Ride[] | undefined;
+  const unreadChat = (useQuery(api.chat.getUnreadChatCount, {}) as number | undefined) ?? 0;
+  const unreadNotifications = (useQuery(api.notifications.getUnreadCount, {}) as number | undefined) ?? 0;
+  const notificationSettings = useDispatcherNotifications();
 
-  const allowNavigation = useCallback((request: { url: string }) => {
-    try {
-      const url = new URL(request.url);
-      if (url.protocol === "https:" && ALLOWED_HOSTS.has(url.hostname)) return true;
-      if (["tel:", "mailto:", "geo:"].includes(url.protocol)) {
-        void Linking.openURL(request.url);
-      }
-    } catch {
-      return false;
-    }
-    return false;
-  }, []);
-
-  const retry = () => {
-    setLoadError(false);
-    setReloadKey((value) => value + 1);
+  const openRideById = (rideId: string) => {
+    setNotificationsVisible(false);
+    const ride = rides?.find((item) => item._id === rideId);
+    if (ride) setSelectedRide(ride);
+    else setTab("rides");
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
-      <AndroidWebView
-        key={reloadKey}
-        ref={webViewRef}
-        source={{ uri: DISPATCH_URL }}
-        originWhitelist={["https://kuryr4you.cz/*", "https://www.kuryr4you.cz/*"]}
-        onNavigationStateChange={handleNavigation}
-        onShouldStartLoadWithRequest={allowNavigation}
-        onLoadStart={() => setLoadError(false)}
-        onError={() => setLoadError(true)}
-        onHttpError={(event: WebViewHttpErrorEvent) => {
-          if (event.nativeEvent.statusCode >= 500) setLoadError(true);
-        }}
-        thirdPartyCookiesEnabled
-        javaScriptEnabled
-        domStorageEnabled
-        setSupportMultipleWindows={false}
-        applicationNameForUserAgent="Kuryr4YouDispatcher/1.1"
-        startInLoadingState
-        renderLoading={() => (
-          <View style={styles.loading}>
-            <ActivityIndicator size="large" color="#F59E0B" />
-            <Text style={styles.loadingText}>Načítám dispečink…</Text>
-          </View>
-        )}
-        style={styles.webView}
-      />
-
-      {loadError ? (
-        <View style={styles.error}>
-          <Text style={styles.errorTitle}>Dispečink se nepodařilo načíst</Text>
-          <Text style={styles.errorText}>Zkontrolujte připojení a zkuste to znovu.</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Znovu načíst dispečink"
-            onPress={retry}
-            style={({ pressed }) => [styles.retry, pressed && styles.retryPressed]}
-          >
-            <Text style={styles.retryText}>Zkusit znovu</Text>
-          </Pressable>
-        </View>
-      ) : null}
-    </SafeAreaView>
+    <View style={styles.root}>
+      <View style={styles.screen}>
+        {tab === "home" ? <DashboardScreen user={user} unreadNotifications={unreadNotifications} onOpenNotifications={() => setNotificationsVisible(true)} onOpenRide={setSelectedRide} onOpenRides={() => setTab("rides")} onOpenMap={() => setTab("map")} onOpenMore={() => setTab("more")} /> : null}
+        {tab === "rides" ? <RidesScreen onOpenRide={setSelectedRide} onNewRide={() => setCreateVisible(true)} /> : null}
+        {tab === "map" ? <MapScreen onOpenRide={setSelectedRide} /> : null}
+        {tab === "chat" ? <ChatScreen user={user} /> : null}
+        {tab === "more" ? <MoreScreen user={user} unreadNotifications={unreadNotifications} onOpenNotifications={() => setNotificationsVisible(true)} notifications={notificationSettings} onSignOut={onSignOut} /> : null}
+      </View>
+      <BottomTabs active={tab} onChange={setTab} badges={{ chat: unreadChat, more: unreadNotifications }} />
+      <RideDetailModal ride={selectedRide} onClose={() => setSelectedRide(null)} />
+      <NotificationsModal visible={notificationsVisible} onClose={() => setNotificationsVisible(false)} onOpenRide={openRideById} />
+      <Modal visible={createVisible} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => setCreateVisible(false)}>
+        <NewRideScreen onCancel={() => setCreateVisible(false)} onCreated={() => { setCreateVisible(false); setTab("rides"); }} />
+      </Modal>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#0F111A" },
-  webView: { flex: 1, backgroundColor: "#0F111A" },
-  loading: {
-    position: "absolute",
-    inset: 0,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#0F111A",
-    gap: 12,
-  },
-  loadingText: { color: "#9198A8", fontSize: 14, fontWeight: "600" },
-  error: {
-    position: "absolute",
-    inset: 0,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#0F111A",
-    padding: 28,
-  },
-  errorTitle: { color: "#EDF0F7", fontSize: 19, fontWeight: "800", textAlign: "center" },
-  errorText: { color: "#9198A8", fontSize: 14, textAlign: "center", marginTop: 8 },
-  retry: {
-    minHeight: 48,
-    borderRadius: 14,
-    backgroundColor: "#F59E0B",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    marginTop: 22,
-  },
-  retryPressed: { opacity: 0.8 },
-  retryText: { color: "#111318", fontSize: 15, fontWeight: "900" },
-});
+const styles = StyleSheet.create({ root: { flex: 1, backgroundColor: colors.background }, screen: { flex: 1 } });

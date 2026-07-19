@@ -56,14 +56,14 @@ jobs:
           if ! jq -e '.expo.extra.eas.projectId // empty' mobile/app.json >/dev/null; then
             (cd mobile && npx eas-cli@21.0.2 project:init --non-interactive --force)
           fi
-          if ! jq -e '.expo.extra.eas.projectId // empty' mobile-dispatcher/app.json >/dev/null; then
+          if ! (cd mobile-dispatcher && npx expo config --json | jq -e '.extra.eas.projectId // empty' >/dev/null); then
             (cd mobile-dispatcher && npx eas-cli@21.0.2 project:init --non-interactive --force)
           fi
 
-          if ! git diff --quiet -- mobile/app.json mobile-dispatcher/app.json; then
+          if ! git diff --quiet -- mobile/app.json mobile-dispatcher/app.json mobile-dispatcher/app.config.js; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add mobile/app.json mobile-dispatcher/app.json
+            git add mobile/app.json mobile-dispatcher/app.json mobile-dispatcher/app.config.js
             git commit -m "chore: link Android apps to Expo EAS"
             git push origin "HEAD:${TARGET_BRANCH}"
           fi
@@ -96,7 +96,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view dispatcher-latest >/dev/null 2>&1 || gh release create dispatcher-latest --title "Kuryr4You Dispečink 1.1.0" --notes "Android aplikace dispečinku s automatickým načítáním aktuálního webu a gamifikace."
+          gh release view dispatcher-latest >/dev/null 2>&1 || gh release create dispatcher-latest --title "Kuryr4You Dispečink 1.2.0" --notes "Plnohodnotná nativní aplikace dispečinku s mapou řidičů, zakázkami, chatem a notifikacemi."
           gh release upload dispatcher-latest kuryr4you-dispecink.apk --clobber
 
       - name: Publikovat řidičské AAB na GitHub

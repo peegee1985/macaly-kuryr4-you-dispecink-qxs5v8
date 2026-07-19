@@ -1,9 +1,7 @@
 node_modules/
 .expo/
 android/
-ios/
 dist/
-assets/*.png
-*.jks
-*.keystore
-credentials.json
+*.log
+.env*
+!.env.example

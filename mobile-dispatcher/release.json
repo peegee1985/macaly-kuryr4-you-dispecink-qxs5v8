@@ -1,12 +1,11 @@
 {
-  "version": "1.1.0",
-  "versionCode": 3,
+  "version": "1.2.0",
+  "versionCode": 4,
   "minimumVersionCode": 2,
   "downloadUrl": "https://github.com/peegee1985/macaly-kuryr4-you-dispecink-qxs5v8/releases/download/dispatcher-latest/kuryr4you-dispecink.apk",
   "releaseNotes": [
-    "Dispečink automaticky načítá aktuální produkční web bez nutnosti dalšího APK",
-    "Nová gamifikace, žebříček, XP a odznaky",
-    "Bezpečné omezení navigace na doménu Kuryr4You",
-    "Obnova po výpadku připojení a podpora tlačítka Zpět"
+    "Obnovena plnohodnotná nativní dispečerská aplikace",
+    "Mapa s posledními známými polohami řidičů a jejich přehledem pod mapou",
+    "Zakázky, chat, notifikace a správa dispečinku opět přímo v aplikaci"
   ]
 }

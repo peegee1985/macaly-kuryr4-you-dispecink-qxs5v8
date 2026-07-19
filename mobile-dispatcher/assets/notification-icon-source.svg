@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <g font-family="DejaVu Sans, sans-serif" font-size="150" font-weight="900" text-anchor="middle" fill="#FFFFFF">
+    <text x="146" y="250">K</text>
+    <text x="256" y="250">4</text>
+    <text x="366" y="250">Y</text>
+  </g>
+  <path d="M84 308H338V276L430 352L338 428V396H84Z" fill="#FFFFFF"/>
+</svg>
