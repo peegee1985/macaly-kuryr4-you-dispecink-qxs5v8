@@ -3,6 +3,7 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import React, { useState, useMemo, useRef } from 'react'
 import type { Id } from '../../convex/_generated/dataModel'
+
 import { AppShell, PageHeader, LoadingScreen } from '@/components/AppShell'
 import { dispatcherNav } from './dispatcer'
 import { calcAll2025, parsePayslipsCsv as parsePayslipsCsvUtil, RATES_2025 } from '@/lib/payslipCalc'
@@ -41,7 +42,7 @@ function EmployeeDetailPage() {
   const employee = useQuery(api.hr.getEmployee, { employeeId: employeeId as Id<'employees'> })
   const drivers = useQuery(api.hr.listDriversForLinking)
   const linkMutation = useMutation(api.hr.linkEmployeeToUser)
-  const [tab, setTab] = useState<'shifts' | 'leave' | 'payslips' | 'payslip'>('shifts')
+  const [tab, setTab] = useState<'shifts' | 'leave' | 'payslips' | 'payslip' | 'gamification'>('shifts')
   const [linkingDriver, setLinkingDriver] = useState(false)
   const [selectedDriver, setSelectedDriver] = useState('')
   const [linking, setLinking] = useState(false)
@@ -168,6 +169,7 @@ function EmployeeDetailPage() {
           { key: 'leave' as const, label: 'Dovolená' },
           { key: 'payslips' as const, label: 'Výplatní pásky' },
           { key: 'payslip' as const, label: 'Nastavení výplaty' },
+          ...(employee.linkedUserId ? [{ key: 'gamification' as const, label: '🏆 Gamifikace' }] : []),
         ].map((t) => (
           <button
             key={t.key}
@@ -187,6 +189,9 @@ function EmployeeDetailPage() {
       {tab === 'leave' && <LeaveTab employeeId={employeeId as Id<'employees'>} />}
       {tab === 'payslips' && <PayslipsTab employeeId={employeeId as Id<'employees'>} employeeName={`${employee.firstName} ${employee.lastName}`} employeePosition={employee.position} employeeContractType={employee.contractType} />}
       {tab === 'payslip' && <PayslipSettingsTab employeeId={employeeId as Id<'employees'>} />}
+      {tab === 'gamification' && employee.linkedUserId && (
+        <DriverGamificationTab driverId={employee.linkedUserId as Id<'users'>} driverName={`${employee.firstName} ${employee.lastName}`} />
+      )}
     </AppShell>
   )
 }
@@ -1850,6 +1855,243 @@ function PayslipSettingsTab({ employeeId }: { employeeId: Id<'employees'> }) {
       >
         {saving ? 'Ukládám...' : 'Uložit nastavení'}
       </button>
+    </div>
+  )
+}
+
+// ── Driver Gamification Tab ──────────────────────────────────────────────────
+
+const TIER_COLORS_DISP: Record<string, string> = {
+  bronze: 'text-amber-600',
+  silver: 'text-slate-300',
+  gold: 'text-yellow-400',
+  platinum: 'text-cyan-300',
+}
+
+const TIER_LABELS_DISP: Record<string, string> = {
+  bronze: 'Bronz',
+  silver: 'Stříbro',
+  gold: 'Zlato',
+  platinum: 'Platina',
+}
+
+const XP_EVENT_LABELS_DISP: Record<string, string> = {
+  pod_complete: 'POD dokončeno',
+  ride_completed: 'Zásilka doručena',
+  rating_five: 'Hodnocení 5/5',
+  vending_visit_completed: 'Servisní návštěva',
+  manual_award: 'Ruční ocenění',
+  manual_correction: 'Korekce dispečera',
+  challenge_complete: 'Výzva splněna',
+}
+
+function xpForLvl(level: number): number {
+  return 250 * Math.pow(level - 1, 2)
+}
+
+function DriverGamificationTab({
+  driverId,
+  driverName,
+}: {
+  driverId: Id<'users'>
+  driverName: string
+}) {
+  const profile = useQuery(api.gamification.getDriverGamificationProfile, { driverId })
+  const auditHistory = useQuery(api.gamification.getDriverAuditHistory, { driverId, limit: 30 })
+  const challenges = useQuery(api.gamification.getDriverActiveChallenges, { driverId })
+  const badges = useQuery(api.gamification.getDriverBadges, { driverId })
+  const manualAward = useMutation(api.gamification.manualAward)
+
+  const [awardXp, setAwardXp] = useState('')
+  const [awardReason, setAwardReason] = useState('')
+  const [awarding, setAwarding] = useState(false)
+  const [awardMsg, setAwardMsg] = useState<string | null>(null)
+
+  const handleManualAward = async () => {
+    const xp = parseInt(awardXp)
+    if (!xp || !awardReason.trim()) return
+    setAwarding(true)
+    setAwardMsg(null)
+    try {
+      await manualAward({ driverId, xp, reason: awardReason.trim() })
+      setAwardMsg(`\u2713 P\u0159id\u00e1no ${xp > 0 ? '+' : ''}${xp} XP`)
+      setAwardXp('')
+      setAwardReason('')
+    } catch (e: any) {
+      setAwardMsg(`Chyba: ${e.message}`)
+    } finally {
+      setAwarding(false)
+    }
+  }
+
+  if (!profile) return <div className="text-sm text-muted-foreground">Načítám…</div>
+
+  const level = profile.level
+  const currentLevelXp = xpForLvl(level)
+  const nextLevelXp = level < 30 ? xpForLvl(level + 1) : currentLevelXp
+  const xpInLevel = profile.lifetimeXp - currentLevelXp
+  const xpNeeded = nextLevelXp - currentLevelXp
+  const pct = xpNeeded > 0 ? Math.round((xpInLevel / xpNeeded) * 100) : 100
+
+  return (
+    <div className="space-y-6">
+      {/* Profile summary */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <div className="flex items-center gap-4 mb-4">
+          <div className="w-14 h-14 rounded-full bg-primary/10 border-2 border-primary/50 flex items-center justify-center flex-shrink-0">
+            <span className="font-heading font-bold text-2xl text-primary">{level}</span>
+          </div>
+          <div>
+            <p className="font-heading font-bold text-lg">{profile.title}</p>
+            <p className="text-sm text-muted-foreground">{driverName} · Úroveň {level}</p>
+          </div>
+        </div>
+        <div className="space-y-1 mb-4">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>{profile.lifetimeXp} XP celkem</span>
+            <span>{level < 30 ? `${xpInLevel} / ${xpNeeded} do lvl ${level + 1}` : 'Max. úroveň'}</span>
+          </div>
+          <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+            <div className="h-full bg-primary rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-3 text-center">
+          {[
+            { label: 'Sezóna XP', value: profile.seasonXp },
+            { label: 'Série dní', value: profile.currentStreak },
+            { label: 'Nej. série', value: profile.longestStreak },
+            { label: 'Odznaky', value: badges?.length ?? 0 },
+          ].map(s => (
+            <div key={s.label} className="bg-secondary/50 rounded-xl p-2.5">
+              <p className="font-heading font-bold text-lg text-primary">{s.value}</p>
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Badges */}
+      {badges && badges.length > 0 && (
+        <div>
+          <h3 className="font-heading font-semibold text-sm mb-3">Získané odznaky</h3>
+          <div className="flex flex-wrap gap-2">
+            {badges.map(b => (
+              <div
+                key={`${b.code}-${b.tier}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium ${
+                  b.tier === 'platinum' ? 'bg-cyan-300/10 border-cyan-300/30 text-cyan-300'
+                  : b.tier === 'gold' ? 'bg-yellow-400/10 border-yellow-400/30 text-yellow-400'
+                  : b.tier === 'silver' ? 'bg-slate-300/10 border-slate-300/30 text-slate-300'
+                  : 'bg-amber-600/10 border-amber-600/30 text-amber-600'
+                }`}
+              >
+                <span>{b.name}</span>
+                <span className={`font-bold ${TIER_COLORS_DISP[b.tier]}`}>({TIER_LABELS_DISP[b.tier]})</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Active challenges */}
+      {challenges && challenges.length > 0 && (
+        <div>
+          <h3 className="font-heading font-semibold text-sm mb-3">Aktivní výzvy</h3>
+          <div className="space-y-2">
+            {challenges.map(c => {
+              const p = c.target > 0 ? Math.round((c.progress / c.target) * 100) : 0
+              return (
+                <div key={c._id} className="bg-card border border-border rounded-lg p-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{c.name}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+                        <div className="h-full bg-primary rounded-full" style={{ width: `${Math.min(p, 100)}%` }} />
+                      </div>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">{c.progress}/{c.target}</span>
+                    </div>
+                  </div>
+                  <span className="text-sm font-bold text-primary flex-shrink-0">+{c.xpReward} XP</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Manual XP Award */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <h3 className="font-heading font-semibold text-sm mb-3">Ruční udělení XP</h3>
+        <div className="flex gap-3 flex-wrap">
+          <input
+            type="number"
+            placeholder="XP (např. 50 nebo -10)"
+            value={awardXp}
+            onChange={e => setAwardXp(e.target.value)}
+            className="flex-1 min-w-[140px] px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          />
+          <input
+            type="text"
+            placeholder="Důvod (povinné)"
+            value={awardReason}
+            onChange={e => setAwardReason(e.target.value)}
+            className="flex-[2] min-w-[200px] px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          />
+          <button
+            onClick={handleManualAward}
+            disabled={awarding || !awardXp || !awardReason.trim()}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
+          >
+            {awarding ? 'Ukládám…' : 'Udělit XP'}
+          </button>
+        </div>
+        {awardMsg && (
+          <p className={`text-sm mt-2 ${awardMsg.startsWith('\u2713') ? 'text-green-400' : 'text-red-400'}`}>
+            {awardMsg}
+          </p>
+        )}
+        <p className="text-xs text-muted-foreground mt-2">Rozsah: -500 až +500 XP. Kladná = bonus, záporná = korekce.</p>
+      </div>
+
+      {/* XP History */}
+      {auditHistory && auditHistory.length > 0 && (
+        <div>
+          <h3 className="font-heading font-semibold text-sm mb-3">Historie XP</h3>
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left px-4 py-3 text-muted-foreground font-medium">Událost</th>
+                  <th className="text-right px-4 py-3 text-muted-foreground font-medium">XP</th>
+                  <th className="text-right px-4 py-3 text-muted-foreground font-medium hidden md:table-cell">Datum</th>
+                </tr>
+              </thead>
+              <tbody>
+                {auditHistory.map(e => (
+                  <tr key={e._id} className="border-b border-border last:border-0 hover:bg-secondary/30">
+                    <td className="px-4 py-3">
+                      <p className="font-medium">{XP_EVENT_LABELS_DISP[e.type] ?? e.type}</p>
+                      {(e.reason || e.dispatcherName) && (
+                        <p className="text-xs text-muted-foreground">
+                          {e.reason}{e.dispatcherName ? ` · ${e.dispatcherName}` : ''}
+                        </p>
+                      )}
+                    </td>
+                    <td className={`px-4 py-3 text-right font-bold font-heading ${
+                      e.xp >= 0 ? 'text-primary' : 'text-destructive'
+                    }`}>
+                      {e.xp > 0 ? '+' : ''}{e.xp}
+                    </td>
+                    <td className="px-4 py-3 text-right text-muted-foreground hidden md:table-cell">
+                      {new Date(e.occurredAt).toLocaleString('cs-CZ', { dateStyle: 'short', timeStyle: 'short' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

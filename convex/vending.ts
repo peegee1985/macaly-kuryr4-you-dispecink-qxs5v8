@@ -688,6 +688,15 @@ export const driverCompleteVisit = mutation({
       userId,
       timestamp: now,
     })
+    // XP za dokončení servisní návštěvy
+    await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
+      driverId: userId,
+      eventKey: `vending_visit_completed:${visitId}`,
+      type: "vending_visit_completed",
+      xp: 25,
+      visitId,
+    })
+
     // Send email notification to client contact
     const client = await ctx.db.get(visit.clientId)
     const location = await ctx.db.get(visit.locationId)

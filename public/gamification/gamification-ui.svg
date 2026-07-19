@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" aria-hidden="true">
+  <defs>
+    <linearGradient id="xp-gradient" x1="24" y1="18" x2="102" y2="106" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF0A3"/><stop offset="0.48" stop-color="#F59E0B"/><stop offset="1" stop-color="#B97805"/>
+    </linearGradient>
+    <linearGradient id="flame-gradient" x1="64" y1="22" x2="64" y2="106" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDE047"/><stop offset="0.5" stop-color="#F59E0B"/><stop offset="1" stop-color="#EF4444"/>
+    </linearGradient>
+    <symbol id="ui-xp-star" viewBox="0 0 128 128">
+      <path d="m64 16 13 29 32 4-24 22 7 32-28-16-28 16 7-32-24-22 32-4 13-29Z" fill="url(#xp-gradient)" stroke="#FFF0A3" stroke-width="4" stroke-linejoin="round"/>
+      <text x="64" y="71" fill="#171A24" font-family="Exo 2, sans-serif" font-size="25" font-weight="900" text-anchor="middle">XP</text>
+    </symbol>
+    <symbol id="ui-streak-flame" viewBox="0 0 128 128">
+      <path d="M69 15c5 22-14 28-8 44 5-9 13-13 20-20 18 17 26 38 16 56-8 15-21 22-36 22-24 0-40-16-40-38 0-22 15-38 31-53 0 14 4 22 10 27-1-17 15-23 7-38Z" fill="url(#flame-gradient)"/>
+      <path d="M64 66c11 10 15 19 10 28-3 6-8 9-14 9-10 0-17-7-17-16 0-9 7-16 14-22 0 7 2 11 5 13 0-5 1-9 2-12Z" fill="#FFF7D6"/>
+    </symbol>
+    <symbol id="ui-level-up-burst" viewBox="0 0 128 128">
+      <path d="m64 4 11 25 23-15-1 28 28-1-15 23 25 11-25 11 15 23-28-1 1 28-23-15-11 25-11-25-23 15 1-28-28 1 15-23L-7 75l25-11L3 41l28 1-1-28 23 15L64 4Z" fill="url(#xp-gradient)" opacity=".95"/>
+      <circle cx="64" cy="64" r="35" fill="#171A24" stroke="#FFF0A3" stroke-width="4"/>
+      <path d="m48 69 16-18 16 18M64 52v32" fill="none" stroke="#F59E0B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="ui-locked-badge" viewBox="0 0 128 128">
+      <path d="M64 9 105 26v32c0 27-17 47-41 58-24-11-41-31-41-58V26L64 9Z" fill="#202431" stroke="#64748B" stroke-width="6"/>
+      <rect x="43" y="57" width="42" height="33" rx="7" fill="#334155" stroke="#94A3B8" stroke-width="5"/>
+      <path d="M51 57V46a13 13 0 0 1 26 0v11" fill="none" stroke="#94A3B8" stroke-width="5"/>
+      <circle cx="64" cy="73" r="4" fill="#F1F5F9"/>
+    </symbol>
+    <symbol id="ui-confetti" viewBox="0 0 128 128">
+      <path d="m45 49 39 39-55 17 16-56Z" fill="#F59E0B" stroke="#FFF0A3" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M55 36c1-12 9-18 19-21M75 43c8-10 19-12 29-8M84 60c13-4 22 1 28 10" fill="none" stroke="#0EA5E9" stroke-width="5" stroke-linecap="round"/>
+      <path d="m92 19 3 8 8 3-8 3-3 8-3-8-8-3 8-3 3-8ZM109 47l5 5-5 5-5-5 5-5Z" fill="#FDE047"/>
+      <circle cx="67" cy="20" r="4" fill="#22C55E"/><circle cx="111" cy="82" r="4" fill="#EF4444"/>
+    </symbol>
+  </defs>
+</svg>
+

@@ -61,6 +61,17 @@ export const rateRide = mutation({
       ratingComment: args.ratingComment,
     })
     console.log(`Ride ${ride.rideNumber} rated ${args.rating}/5`)
+
+    // XP za hodnocení 5/5
+    if (args.rating === 5 && ride.driverId) {
+      await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
+        driverId: ride.driverId,
+        eventKey: `ride:${ride._id}:rating:5`,
+        type: "rating_five",
+        xp: 20,
+        rideId: ride._id,
+      })
+    }
     return null
   },
 })
@@ -943,6 +954,24 @@ export const submitPOD = mutation({
         toEmail: customer.email,
         subject: `Kuryr4You – Zásilka ${ride.rideNumber} doručena ✓`,
         message: `Dobrý den,\n\nVaše zásilka ${ride.rideNumber} byla úspěšně doručena.\n\nVyzvednutí: ${ride.pickupAddress}\nDoručení: ${ride.deliveryAddress}\n\nOhodnoťte prosím doručení (1–5 hvězd):\nhttps://www.kuryr4you.cz/hodnoceni/${ride.ratingToken}\n\nDěkujeme za Vaši důvěru!\nKuryr4You Dispečink`,
+      })
+    }
+
+    // XP za dokončení doručení (POD + ride_completed)
+    if (ride.driverId) {
+      await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
+        driverId: ride.driverId,
+        eventKey: `pod_complete:${args.rideId}`,
+        type: "pod_complete",
+        xp: 30,
+        rideId: args.rideId,
+      })
+      await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
+        driverId: ride.driverId,
+        eventKey: `ride_completed:${args.rideId}`,
+        type: "ride_completed",
+        xp: 10,
+        rideId: args.rideId,
       })
     }
     return null

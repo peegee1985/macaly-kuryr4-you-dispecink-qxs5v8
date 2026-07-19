@@ -4,6 +4,8 @@ import { api } from '../../convex/_generated/api'
 import { useEffect } from 'react'
 import { DriverShell } from '@/components/DriverShell'
 import { LoadingScreen, StatusBadge } from '@/components/AppShell'
+import { GamificationCard } from '@/components/GamificationCard'
+import { LevelUpModal } from '@/components/LevelUpModal'
 
 export const Route = createFileRoute('/ridic/')({
   component: DriverDashboard,
@@ -52,7 +54,11 @@ function DriverDashboard() {
 
   return (
     <DriverShell>
+      <LevelUpModal />
       <div className="px-4 pt-5 pb-2">
+        {/* Gamification XP card */}
+        <GamificationCard />
+
         {/* Stats strip */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           {[
