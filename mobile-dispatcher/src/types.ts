@@ -19,6 +19,7 @@ export type MorePage =
   | "teams"
   | "employees"
   | "vending"
+  | "gamification"
   | "statistics"
   | "settings";
 

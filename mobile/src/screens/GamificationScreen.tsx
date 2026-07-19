@@ -1,15 +1,15 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useQuery } from "convex/react";
-import { useState, type ComponentProps } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { GamificationBadge, StreakFlameArtwork, type BadgeTier } from "../components/GamificationArtwork";
 import { Card, EmptyState, PageHeader, Screen } from "../components/ui";
 import { api } from "../lib/api";
 import { colors, radius, spacing } from "../theme";
 
 type Cadence = "daily" | "weekly" | "monthly";
 type Section = Cadence | "badges";
-type IconName = ComponentProps<typeof Ionicons>["name"];
 
 type Profile = {
   lifetimeXp: number;
@@ -34,8 +34,6 @@ type Challenge = {
   expiresAt: number;
 };
 
-type BadgeTier = "bronze" | "silver" | "gold" | "platinum";
-
 type Badge = {
   code: string;
   name: string;
@@ -59,19 +57,6 @@ const badgeColors: Record<BadgeTier, string> = {
   silver: "#C0C7D1",
   gold: "#F6C344",
   platinum: "#8BE4F0",
-};
-
-const badgeIcons: Record<string, IconName> = {
-  "badge-icon-first-delivery": "cube",
-  "badge-icon-always-on-time": "time",
-  "badge-icon-pod-professional": "document-text",
-  "badge-icon-multi-stop-master": "git-branch",
-  "badge-icon-reliable-partner": "shield-checkmark",
-  "badge-icon-customer-favorite": "star",
-  "badge-icon-team-player": "people",
-  "badge-icon-perfect-week": "calendar",
-  "badge-icon-deliveries-250": "ribbon",
-  "badge-icon-k4y-legend": "trophy",
 };
 
 export function GamificationScreen() {
@@ -139,7 +124,7 @@ function ProfileCard({ profile }: { profile: Profile | null | undefined }) {
           <Text style={styles.profileXp}>{profile?.lifetimeXp ?? 0} XP celkem</Text>
         </View>
         <View style={styles.streak}>
-          <Ionicons name="flame" color={colors.primary} size={18} />
+          <StreakFlameArtwork size={20} />
           <Text style={styles.streakText}>{profile?.currentStreak ?? 0}</Text>
         </View>
       </View>
@@ -191,6 +176,8 @@ function ChallengeList({ challenges }: { challenges: Challenge[] }) {
 }
 
 function BadgeGrid({ badges }: { badges: Badge[] }) {
+  const [selected, setSelected] = useState<Badge | null>(null);
+
   if (badges.length === 0) {
     return <EmptyState icon="ribbon-outline" title="Odznaky se připravují" message="První odznak získáš dokončením zásilky." />;
   }
@@ -201,19 +188,55 @@ function BadgeGrid({ badges }: { badges: Badge[] }) {
         const tier = badge.currentTier;
         const color = tier ? badgeColors[tier] : colors.textMuted;
         return (
-          <Card key={badge.code} style={[styles.badgeCard, !tier && styles.badgeLocked]}>
-            <View style={[styles.badgeFrame, { borderColor: color, backgroundColor: `${color}18` }]}>
-              <Ionicons name={badgeIcons[badge.iconKey] ?? "ribbon"} color={color} size={27} />
-            </View>
-            <Text style={styles.badgeName}>{badge.name}</Text>
-            <Text style={[styles.badgeTier, { color }]}>{tier ? tierLabel(tier) : "Zamčeno"}</Text>
-            <Text style={styles.badgeMetric}>
-              {badge.nextTierThreshold ? `${badge.metricValue} / ${badge.nextTierThreshold}` : `${badge.metricValue}`}
-            </Text>
-          </Card>
+          <Pressable
+            key={badge.code}
+            accessibilityRole="button"
+            accessibilityLabel={`Detail odznaku ${badge.name}`}
+            onPress={() => setSelected(badge)}
+            style={({ pressed }) => [styles.badgePressable, pressed && styles.pressed]}
+          >
+            <Card style={[styles.badgeCard, !tier && styles.badgeLocked]}>
+              <GamificationBadge iconKey={badge.iconKey} tier={tier} size={76} />
+              <Text style={styles.badgeName}>{badge.name}</Text>
+              <Text style={[styles.badgeTier, { color }]}>{tier ? tierLabel(tier) : "Zamčeno"}</Text>
+              <Text style={styles.badgeMetric}>
+                {badge.nextTierThreshold ? `${badge.metricValue} / ${badge.nextTierThreshold}` : `${badge.metricValue}`}
+              </Text>
+            </Card>
+          </Pressable>
         );
       })}
+      <BadgeDetail badge={selected} onClose={() => setSelected(null)} />
     </View>
+  );
+}
+
+function BadgeDetail({ badge, onClose }: { badge: Badge | null; onClose: () => void }) {
+  const tier = badge?.currentTier;
+  const color = tier ? badgeColors[tier] : colors.textMuted;
+  return (
+    <Modal visible={badge !== null} transparent animationType="fade" onRequestClose={onClose}>
+      <View accessibilityViewIsModal style={styles.modalOverlay}>
+        <View style={styles.modalDialog}>
+          {badge ? <GamificationBadge iconKey={badge.iconKey} tier={tier} size={126} /> : null}
+          <Text style={styles.modalTitle}>{badge?.name}</Text>
+          <Text style={[styles.modalTier, { color }]}>{tier ? tierLabel(tier) : "Zamčeno"}</Text>
+          <Text style={styles.modalDescription}>{badge?.description}</Text>
+          <View style={styles.modalProgress}>
+            <Text style={styles.modalProgressLabel}>Aktuální postup</Text>
+            <Text style={styles.modalProgressValue}>
+              {badge?.metricValue ?? 0}{badge?.nextTierThreshold ? ` / ${badge.nextTierThreshold}` : ""}
+            </Text>
+          </View>
+          {badge?.nextTier ? (
+            <Text style={styles.modalNext}>Další úroveň: {tierLabel(badge.nextTier)}</Text>
+          ) : null}
+          <Pressable accessibilityRole="button" onPress={onClose} style={({ pressed }) => [styles.modalButton, pressed && styles.pressed]}>
+            <Text style={styles.modalButtonText}>Zavřít</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -269,10 +292,22 @@ const styles = StyleSheet.create({
   challengeValue: { color: colors.text, fontSize: 11, fontWeight: "800" },
   challengeExpiry: { color: colors.textMuted, fontSize: 11 },
   badgeGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
-  badgeCard: { width: "47.5%", alignItems: "center", padding: spacing.md },
+  badgePressable: { width: "47.5%" },
+  badgeCard: { width: "100%", alignItems: "center", padding: spacing.md },
   badgeLocked: { opacity: 0.55 },
-  badgeFrame: { width: 64, height: 64, borderRadius: 22, borderWidth: 2, alignItems: "center", justifyContent: "center", marginBottom: spacing.sm },
+  pressed: { opacity: 0.76 },
   badgeName: { color: colors.text, fontSize: 12, fontWeight: "800", textAlign: "center", minHeight: 32 },
   badgeTier: { fontSize: 10, fontWeight: "900", textTransform: "uppercase", marginTop: 3 },
   badgeMetric: { color: colors.textMuted, fontSize: 10, marginTop: 3 },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, alignItems: "center", justifyContent: "center", padding: spacing.xl },
+  modalDialog: { width: "100%", maxWidth: 380, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: "rgba(245,158,11,0.55)", padding: spacing.xl, alignItems: "center" },
+  modalTitle: { color: colors.text, fontSize: 21, fontWeight: "900", textAlign: "center", marginTop: spacing.md },
+  modalTier: { fontSize: 11, fontWeight: "900", textTransform: "uppercase", marginTop: spacing.xs },
+  modalDescription: { color: colors.textMuted, fontSize: 13, lineHeight: 19, textAlign: "center", marginTop: spacing.md },
+  modalProgress: { width: "100%", flexDirection: "row", justifyContent: "space-between", backgroundColor: colors.surfaceRaised, borderRadius: radius.md, padding: spacing.md, marginTop: spacing.lg },
+  modalProgressLabel: { color: colors.textMuted, fontSize: 12, fontWeight: "700" },
+  modalProgressValue: { color: colors.text, fontSize: 12, fontWeight: "900" },
+  modalNext: { color: colors.primary, fontSize: 12, fontWeight: "800", marginTop: spacing.md },
+  modalButton: { width: "100%", minHeight: 46, borderRadius: radius.md, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", marginTop: spacing.xl },
+  modalButtonText: { color: colors.primaryText, fontSize: 14, fontWeight: "900" },
 });

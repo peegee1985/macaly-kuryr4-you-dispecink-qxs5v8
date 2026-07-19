@@ -96,7 +96,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view dispatcher-latest >/dev/null 2>&1 || gh release create dispatcher-latest --title "Kuryr4You Dispečink 1.2.0" --notes "Plnohodnotná nativní aplikace dispečinku s mapou řidičů, zakázkami, chatem a notifikacemi."
+          gh release view dispatcher-latest >/dev/null 2>&1 || gh release create dispatcher-latest --title "Kuryr4You Dispečink 1.3.0" --notes "Plnohodnotná nativní aplikace dispečinku s mapou, gamifikací, zakázkami, chatem a notifikacemi."
           gh release upload dispatcher-latest kuryr4you-dispecink.apk --clobber
 
       - name: Publikovat řidičské AAB na GitHub
@@ -104,5 +104,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view driver-latest >/dev/null 2>&1 || gh release create driver-latest --title "Kuryr4You Řidič 0.6.0" --notes "Google Play AAB s gamifikací, výzvami a odznaky."
+          gh release view driver-latest >/dev/null 2>&1 || gh release create driver-latest --title "Kuryr4You Řidič 0.7.0" --notes "Google Play AAB s gamifikací, výzvami a originálními odznaky."
           gh release upload driver-latest kuryr4you-ridic.aab --clobber

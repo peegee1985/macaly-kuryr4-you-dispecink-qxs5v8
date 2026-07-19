@@ -40,6 +40,7 @@ import type {
   UserSummary,
   VendingOverview,
 } from "../types";
+import { GamificationAdminScreen } from "./GamificationAdminScreen";
 
 type NotificationSettings = {
   enabled: boolean;
@@ -97,6 +98,12 @@ const menu: Array<{
     icon: "construct-outline",
   },
   {
+    page: "gamification",
+    title: "Gamifikace",
+    subtitle: "XP, výzvy, odznaky a ocenění řidičů",
+    icon: "trophy-outline",
+  },
+  {
     page: "statistics",
     title: "Statistiky",
     subtitle: "Výkon zakázek a obrat",
@@ -135,6 +142,8 @@ export function MoreScreen({
   if (page === "employees")
     return <EmployeesPage onBack={() => setPage("menu")} />;
   if (page === "vending") return <VendingPage onBack={() => setPage("menu")} />;
+  if (page === "gamification")
+    return <GamificationAdminScreen onBack={() => setPage("menu")} />;
   if (page === "statistics")
     return <StatisticsPage onBack={() => setPage("menu")} />;
   if (page === "settings")

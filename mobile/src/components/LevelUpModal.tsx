@@ -1,9 +1,9 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useMutation, useQuery } from "convex/react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { api } from "../lib/api";
 import { colors, radius, spacing } from "../theme";
+import { LevelUpArtwork } from "./GamificationArtwork";
 
 type Profile = {
   pendingLevelUp?: boolean;
@@ -24,9 +24,7 @@ export function LevelUpModal() {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
       <View style={styles.overlay}>
         <View style={styles.dialog}>
-          <View style={styles.ring}>
-            <Ionicons name="trophy" color={colors.primary} size={42} />
-          </View>
+          <View style={styles.artwork}><LevelUpArtwork size={104} /></View>
           <Text style={styles.eyebrow}>NOVÁ ÚROVEŇ</Text>
           <Text style={styles.level}>Level {profile?.pendingLevelUpLevel ?? ""}</Text>
           <Text style={styles.title}>{profile?.pendingLevelUpTitle ?? "Skvělá práce"}</Text>
@@ -63,17 +61,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     alignItems: "center",
   },
-  ring: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    backgroundColor: "rgba(245,158,11,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: spacing.lg,
-  },
+  artwork: { marginBottom: spacing.lg },
   eyebrow: { color: colors.primary, fontSize: 11, fontWeight: "900", letterSpacing: 2 },
   level: { color: colors.text, fontSize: 34, fontWeight: "900", marginTop: spacing.xs },
   title: { color: colors.text, fontSize: 18, fontWeight: "800", marginTop: spacing.xs },
