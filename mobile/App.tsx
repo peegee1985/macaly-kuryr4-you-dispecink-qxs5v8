@@ -1,11 +1,12 @@
 import { ConvexAuthProvider, useAuthActions } from "@convex-dev/auth/react";
-import { ConvexReactClient, useConvexAuth, useQuery } from "convex/react";
+import { ConvexReactClient, useConvexAuth, useMutation, useQuery } from "convex/react";
 import * as Notifications from "expo-notifications";
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
+import { LevelUpModal } from "./src/components/LevelUpModal";
 import { BottomTabs, LoadingView } from "./src/components/ui";
 import { useGpsTracking } from "./src/hooks/useGpsTracking";
 import { useDriverStatusNotification } from "./src/hooks/useDriverStatusNotification";
@@ -16,6 +17,7 @@ import { AccountStateScreen, LoginScreen, MissingConfigurationScreen } from "./s
 import { AvailabilityScreen } from "./src/screens/AvailabilityScreen";
 import { ChatScreen } from "./src/screens/ChatScreen";
 import { DashboardScreen } from "./src/screens/DashboardScreen";
+import { GamificationScreen } from "./src/screens/GamificationScreen";
 import { NotificationsModal } from "./src/screens/NotificationsModal";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { RideDetailModal } from "./src/screens/RideDetailModal";
@@ -81,6 +83,7 @@ function DriverApp({ user, onSignOut }: { user: DriverUser; onSignOut: () => voi
   const gps = useGpsTracking();
   const rides = useQuery(api.rides.getDriverRides, {}) as Ride[] | undefined;
   const unreadChat = useQuery(api.chat.getUnreadChatCount, {}) as number | undefined;
+  const initializeGamification = useMutation(api.gamification.initializeMyGamification);
   const activeRide = useMemo(() => {
     const priorities: Ride["status"][] = ["transit", "pickup", "assigned", "approved", "pending"];
     return (rides ?? [])
@@ -98,6 +101,12 @@ function DriverApp({ user, onSignOut }: { user: DriverUser; onSignOut: () => voi
   useEffect(() => {
     void getStatusNotificationsEnabled().then(setStatusNotificationsEnabledState);
   }, []);
+
+  useEffect(() => {
+    void initializeGamification({}).catch((error: unknown) => {
+      console.warn("[gamification] initialization failed", error);
+    });
+  }, [initializeGamification]);
 
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
@@ -125,11 +134,13 @@ function DriverApp({ user, onSignOut }: { user: DriverUser; onSignOut: () => voi
             onGpsToggle={() => void (gps.tracking ? gps.stop() : gps.start())}
             onOpenRide={setSelectedRide}
             onOpenRides={() => setTab("rides")}
+            onOpenGamification={() => setTab("gamification")}
             onOpenNotifications={() => setNotificationsOpen(true)}
           />
         ) : null}
         {tab === "rides" ? <RidesScreen onOpenRide={setSelectedRide} /> : null}
         {tab === "chat" ? <ChatScreen user={user} /> : null}
+        {tab === "gamification" ? <GamificationScreen /> : null}
         {tab === "vending" ? <VendingScreen onOpenVisit={setSelectedVisit} /> : null}
         {tab === "availability" ? <AvailabilityScreen /> : null}
         {tab === "profile" ? (
@@ -146,6 +157,7 @@ function DriverApp({ user, onSignOut }: { user: DriverUser; onSignOut: () => voi
       <RideDetailModal ride={selectedRide} onClose={() => setSelectedRide(null)} />
       <VisitDetailModal visit={selectedVisit} onClose={() => setSelectedVisit(null)} />
       <NotificationsModal visible={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
+      <LevelUpModal />
     </View>
   );
 }
