@@ -3,6 +3,9 @@
 Samostatná hodinková aplikace (Kotlin + Compose for Wear OS) zobrazující přehled
 dispečinku Kurýr4You: souhrn zakázek, aktivní zakázky s další zastávkou a stavem.
 
+Návrhy dalšího rozvoje obou Wear aplikací jsou vedené v
+[`POSSIBLE_FUTURE_FEATURES.md`](POSSIBLE_FUTURE_FEATURES.md).
+
 Data čte z dispečerského HTTP API (`/api/v1/dispatch/*`) pomocí API klíče
 `k4ai_…`, který se vytváří na webu v sekci **Dispečink → AI přístup**. Klíč se
 zadává jednorázově přímo na hodinkách (klávesnicí nebo hlasem) a ukládá se jen
