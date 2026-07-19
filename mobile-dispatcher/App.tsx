@@ -9,7 +9,7 @@ import { BottomTabs, LoadingView } from "./src/components/ui";
 import { useDispatcherNotifications } from "./src/hooks/useDispatcherNotifications";
 import { api } from "./src/lib/api";
 import { secureAuthStorage } from "./src/lib/storage";
-import { AccessScreen, AccountStateScreen, MissingConfigurationScreen } from "./src/screens/AuthScreens";
+import { AccessScreen, AccountStateScreen } from "./src/screens/AuthScreens";
 import { ChatScreen } from "./src/screens/ChatScreen";
 import { DashboardScreen } from "./src/screens/DashboardScreen";
 import { MapScreen } from "./src/screens/MapScreen";
@@ -21,13 +21,11 @@ import { RidesScreen } from "./src/screens/RidesScreen";
 import { colors } from "./src/theme";
 import type { DispatcherUser, MainTab, Ride } from "./src/types";
 
-const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
-const convex = new ConvexReactClient(convexUrl || "https://example.convex.cloud", { unsavedChangesWarning: false });
+const PRODUCTION_CONVEX_URL = "https://amicable-dogfish-440.eu-west-1.convex.cloud";
+const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL || PRODUCTION_CONVEX_URL;
+const convex = new ConvexReactClient(convexUrl, { unsavedChangesWarning: false });
 
 export default function App() {
-  if (!convexUrl) {
-    return <SafeAreaProvider><StatusBar style="light" /><MissingConfigurationScreen /></SafeAreaProvider>;
-  }
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
