@@ -1,0 +1,108 @@
+name: Expo Android releases
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "mobile/**"
+      - "mobile-dispatcher/**"
+      - ".github/workflows/eas-android-build.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: eas-android-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_NO_VCS: "1"
+      TARGET_BRANCH: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            mobile/package-lock.json
+            mobile-dispatcher/package-lock.json
+
+      - name: Ověřit Expo token
+        run: |
+          test -n "$EXPO_TOKEN" || { echo "::error::V GitHub Actions chybí secret EXPO_TOKEN"; exit 1; }
+          npx eas-cli@21.0.2 whoami
+
+      - name: Nainstalovat a zkontrolovat obě aplikace
+        run: |
+          npm ci --prefix mobile
+          npm run typecheck --prefix mobile
+          npm ci --prefix mobile-dispatcher
+          npm run typecheck --prefix mobile-dispatcher
+          npx expo-doctor mobile-dispatcher
+
+      - name: Napojit projekty na EAS
+        run: |
+          if ! jq -e '.expo.extra.eas.projectId // empty' mobile/app.json >/dev/null; then
+            (cd mobile && npx eas-cli@21.0.2 project:init --non-interactive --force)
+          fi
+          if ! jq -e '.expo.extra.eas.projectId // empty' mobile-dispatcher/app.json >/dev/null; then
+            (cd mobile-dispatcher && npx eas-cli@21.0.2 project:init --non-interactive --force)
+          fi
+
+          if ! git diff --quiet -- mobile/app.json mobile-dispatcher/app.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add mobile/app.json mobile-dispatcher/app.json
+            git commit -m "chore: link Android apps to Expo EAS"
+            git push origin "HEAD:${TARGET_BRANCH}"
+          fi
+
+      - name: Sestavit řidičské AAB pro Google Play
+        run: |
+          (cd mobile && npx eas-cli@21.0.2 build --platform android --profile production --non-interactive --wait --json > ../driver-build.json)
+          DRIVER_URL=$(jq -r '.[0].artifacts.buildUrl' driver-build.json)
+          test -n "$DRIVER_URL" && test "$DRIVER_URL" != "null"
+          curl --fail --location "$DRIVER_URL" --output kuryr4you-ridic.aab
+
+      - name: Sestavit instalační APK dispečinku
+        run: |
+          (cd mobile-dispatcher && npx eas-cli@21.0.2 build --platform android --profile preview --non-interactive --wait --json > ../dispatcher-build.json)
+          DISPATCHER_URL=$(jq -r '.[0].artifacts.buildUrl' dispatcher-build.json)
+          test -n "$DISPATCHER_URL" && test "$DISPATCHER_URL" != "null"
+          curl --fail --location "$DISPATCHER_URL" --output kuryr4you-dispecink.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release-files
+          path: |
+            kuryr4you-ridic.aab
+            kuryr4you-dispecink.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publikovat dispečerské APK na GitHub
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view dispatcher-latest >/dev/null 2>&1 || gh release create dispatcher-latest --title "Kuryr4You Dispečink 1.1.0" --notes "Android aplikace dispečinku s automatickým načítáním aktuálního webu a gamifikace."
+          gh release upload dispatcher-latest kuryr4you-dispecink.apk --clobber
+
+      - name: Publikovat řidičské AAB na GitHub
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view driver-latest >/dev/null 2>&1 || gh release create driver-latest --title "Kuryr4You Řidič 0.6.0" --notes "Google Play AAB s gamifikací, výzvami a odznaky."
+          gh release upload driver-latest kuryr4you-ridic.aab --clobber
