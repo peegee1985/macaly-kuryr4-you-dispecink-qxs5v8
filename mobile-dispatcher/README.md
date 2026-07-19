@@ -1,24 +1,32 @@
-# Kuryr4You Dispečink — Android
+# Kuryr4You Dispečink pro Android
 
-Expo shell produkčního dispečinku. Aplikace bezpečně načítá pouze domény
-`kuryr4you.cz` a `www.kuryr4you.cz`, zachovává přihlášení a podporuje
-Android back navigation a obnovu po výpadku připojení. Protože zobrazuje
-produkční web, nové funkce dispečinku včetně gamifikace se projeví bez
-vydání dalšího APK.
+Samostatná nativní Expo/React Native aplikace pro dispečery. Používá stejný Convex backend jako webový dispečink, ale má vlastní Android balíček `cz.kuryr4you.dispatcher` a vlastní APK workflow.
 
-## Kontrola
+## Lokální spuštění
 
 ```bash
 npm ci
-npm run typecheck
-npx expo-doctor
+EXPO_PUBLIC_CONVEX_URL=https://amicable-dogfish-440.eu-west-1.convex.cloud npx expo start
 ```
 
-## Instalační APK
+## Kontroly
 
 ```bash
-npx eas-cli project:init
-npx eas-cli build --platform android --profile preview
+npm run typecheck
+npx expo-doctor@latest
+EXPO_PUBLIC_CONVEX_URL=https://amicable-dogfish-440.eu-west-1.convex.cloud npx expo export --platform android
 ```
 
-Podepsané APK se publikuje na GitHub Release `dispatcher-latest`.
+## Mapa bez API klíče
+
+Živá mapa používá Leaflet a OpenStreetMap dlaždice v nativním Android WebView. Nevyžaduje Google Maps API ani žádný API klíč. Atribuce OpenStreetMap je zobrazena přímo v mapě.
+
+## Funkce první verze
+
+- dispečerské přihlášení a bezpečné obnovení relace;
+- živý dashboard, všechny zásilky, schválení, cena, řidič, stav a platební odkaz;
+- GPS mapa řidičů, chat a centrum oznámení;
+- zákazníci a uživatelé, CRM, fakturace, dostupnost, týmy a HR;
+- vending přehled, statistiky a nastavení profilu/notifikací.
+
+GitHub Actions workflow `Android Dispatcher APK` vytváří samostatné instalační APK jako artefakt `kuryr4you-dispecink-apk`.
