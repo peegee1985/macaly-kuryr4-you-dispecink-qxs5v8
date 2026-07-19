@@ -9,12 +9,18 @@
       "autoIncrement": true,
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://amicable-dogfish-440.eu-west-1.convex.cloud"
       }
     },
     "production": {
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://amicable-dogfish-440.eu-west-1.convex.cloud"
       }
     }
   },

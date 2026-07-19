@@ -1,9 +1,10 @@
 {
-  "version": "1.3.0",
-  "versionCode": 5,
+  "version": "1.3.1",
+  "versionCode": 6,
   "minimumVersionCode": 2,
   "downloadUrl": "https://github.com/peegee1985/macaly-kuryr4-you-dispecink-qxs5v8/releases/download/dispatcher-latest/kuryr4you-dispecink.apk",
   "releaseNotes": [
+    "Opravené produkční připojení k backendu Convex",
     "Nativní gamifikace s žebříčkem a detailem každého řidiče",
     "Originální grafiky odznaků, aktivní výzvy a audit změn XP",
     "Ruční ocenění nebo korekce XP s povinným důvodem",
