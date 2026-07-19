@@ -62,15 +62,25 @@ export const rateRide = mutation({
     })
     console.log(`Ride ${ride.rideNumber} rated ${args.rating}/5`)
 
-    // XP za hodnocení 5/5
-    if (args.rating === 5 && ride.driverId) {
+    if (ride.driverId) {
+      // Každé hodnocení je auditní metrika pro měsíční výzvu; klient nikdy neposílá XP.
       await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
         driverId: ride.driverId,
-        eventKey: `ride:${ride._id}:rating:5`,
-        type: "rating_five",
-        xp: 20,
+        eventKey: `ride:${ride._id}:rating`,
+        type: "rating_received",
+        xp: 0,
         rideId: ride._id,
+        metadata: JSON.stringify({ rating: args.rating }),
       })
+      if (args.rating === 5) {
+        await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
+          driverId: ride.driverId,
+          eventKey: `ride:${ride._id}:rating:5`,
+          type: "rating_five",
+          xp: 20,
+          rideId: ride._id,
+        })
+      }
     }
     return null
   },
@@ -726,6 +736,20 @@ export async function updateRideStatusCore(
 
     await ctx.db.patch(args.rideId, updates)
 
+    if (
+      ride.driverId &&
+      args.status === "pickup" &&
+      Date.now() <= ride.requestedPickupAt
+    ) {
+      await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
+        driverId: ride.driverId,
+        eventKey: `ride:${ride._id}:pickup:on-time`,
+        type: "pickup_on_time",
+        xp: 25,
+        rideId: ride._id,
+      })
+    }
+
     const statusLabels: Record<string, string> = {
       pickup: "Zásilka vyzvedávána",
       transit: "Zásilka na cestě",
@@ -923,16 +947,18 @@ export const submitPOD = mutation({
 
     const ride = await ctx.db.get(args.rideId)
     if (!ride) throw new Error("Zakázka nenalezena")
+    if (ride.status === "delivered") throw new Error("Zásilka už byla doručena")
     // Drivers can only submit POD for their own assigned rides
     if (user.role === "driver" && ride.driverId !== user._id) throw new Error("Zakázka nenalezena")
     if (!args.recipientName?.trim()) throw new Error("Zadejte jméno příjemce")
     if (args.photoIds.length === 0) throw new Error("Přidejte alespoň jednu fotografii doručení")
     if (!args.signatureId) throw new Error("Podpis příjemce je povinný")
 
+    const deliveredAt = Date.now()
     await ctx.db.patch(args.rideId, {
       podPhotoIds: args.photoIds,
       podSignatureId: args.signatureId,
-      podDeliveredAt: Date.now(),
+      podDeliveredAt: deliveredAt,
       podRecipientName: args.recipientName.trim(),
       status: "delivered",
       codCollected: args.codCollected ?? false,
@@ -957,22 +983,48 @@ export const submitPOD = mutation({
       })
     }
 
-    // XP za dokončení doručení (POD + ride_completed)
+    // XP podle centrálního gamifikačního kontraktu. Stabilní klíče brání dvojím odměnám.
     if (ride.driverId) {
       await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
         driverId: ride.driverId,
-        eventKey: `pod_complete:${args.rideId}`,
+        eventKey: `ride:${args.rideId}:pod`,
         type: "pod_complete",
-        xp: 30,
+        xp: 15,
         rideId: args.rideId,
       })
       await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
         driverId: ride.driverId,
-        eventKey: `ride_completed:${args.rideId}`,
-        type: "ride_completed",
-        xp: 10,
+        eventKey: `ride:${args.rideId}:pod:photo-signature`,
+        type: "pod_photo_and_signature",
+        xp: 5,
         rideId: args.rideId,
       })
+      await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
+        driverId: ride.driverId,
+        eventKey: `ride:${args.rideId}:delivered`,
+        type: "ride_completed",
+        xp: 100,
+        rideId: args.rideId,
+      })
+      if (deliveredAt <= ride.requestedDeliveryAt) {
+        await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
+          driverId: ride.driverId,
+          eventKey: `ride:${args.rideId}:delivery:on-time`,
+          type: "delivery_on_time",
+          xp: 25,
+          rideId: args.rideId,
+        })
+      }
+      for (const [index] of (ride.stops ?? []).slice(0, 5).entries()) {
+        await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
+          driverId: ride.driverId,
+          eventKey: `ride:${args.rideId}:stop:${index + 1}`,
+          type: "intermediate_stop",
+          xp: 10,
+          rideId: args.rideId,
+          metadata: JSON.stringify({ stopIndex: index + 1 }),
+        })
+      }
     }
     return null
   },
@@ -1028,6 +1080,16 @@ export const submitFailedDelivery = mutation({
         toEmail: customer.email,
         subject: `Kuryr4You – Zásilka ${ride.rideNumber} nebyla doručena`,
         message: `Dobrý den,\n\nVaše zásilka ${ride.rideNumber} bohužel nebyla doručena.\n\nDůvod: ${args.failedReason}\n\nPro přeplánování doručení nás prosím kontaktujte.\n\nKuryr4You Dispečink`,
+      })
+    }
+
+    if (ride.driverId) {
+      await ctx.scheduler.runAfter(0, internal.gamification.awardXpInternal, {
+        driverId: ride.driverId,
+        eventKey: `ride:${args.rideId}:failed`,
+        type: "ride_failed",
+        xp: 0,
+        rideId: args.rideId,
       })
     }
 
