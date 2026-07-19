@@ -91,6 +91,20 @@ function ProfilePage({ user, notifications, onBack, onSignOut }: { user: Custome
   const [newPassword, setNewPassword] = useState("");
   const [passwordBusy, setPasswordBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentPrefBusy, setPaymentPrefBusy] = useState(false);
+
+  const setPaymentPreference = async (value: "invoice" | "card") => {
+    if ((user.paymentPreference ?? "invoice") === value) return;
+    setPaymentPrefBusy(true);
+    setError(null);
+    try {
+      await updateProfile({ paymentPreference: value });
+    } catch {
+      setError("Způsob platby se nepodařilo uložit.");
+    } finally {
+      setPaymentPrefBusy(false);
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -196,6 +210,32 @@ function ProfilePage({ user, notifications, onBack, onSignOut }: { user: Custome
         </View>
         {user.corporateStatus === "approved" ? (
           <View><Text style={styles.companyName}>{user.companyName}</Text><Text style={styles.note}>{user.companyAddress}</Text>{user.companyIco ? <Text style={styles.note}>IČO: {user.companyIco}{user.companyDic ? ` · DIČ: ${user.companyDic}` : ""}</Text> : null}</View>
+        ) : null}
+        {user.corporateStatus === "approved" ? (
+          <View style={styles.topGap}>
+            <Text style={styles.switchTitle}>Výchozí způsob platby</Text>
+            <Text style={styles.note}>Platí pro nové objednávky. Dispečer může vždy poslat platební odkaz ručně.</Text>
+            <View style={[styles.twoColumns, styles.topGap]}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={paymentPrefBusy}
+                onPress={() => void setPaymentPreference("invoice")}
+                style={[styles.paymentOption, (user.paymentPreference ?? "invoice") === "invoice" && styles.paymentOptionActive, styles.column]}
+              >
+                <Ionicons name="document-text-outline" size={18} color={(user.paymentPreference ?? "invoice") === "invoice" ? colors.primaryText : colors.textMuted} />
+                <Text style={[styles.paymentOptionText, (user.paymentPreference ?? "invoice") === "invoice" && styles.paymentOptionTextActive]}>Faktura (14 dnů)</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                disabled={paymentPrefBusy}
+                onPress={() => void setPaymentPreference("card")}
+                style={[styles.paymentOption, user.paymentPreference === "card" && styles.paymentOptionActive, styles.column]}
+              >
+                <Ionicons name="card-outline" size={18} color={user.paymentPreference === "card" ? colors.primaryText : colors.textMuted} />
+                <Text style={[styles.paymentOptionText, user.paymentPreference === "card" && styles.paymentOptionTextActive]}>Platba kartou</Text>
+              </Pressable>
+            </View>
+          </View>
         ) : null}
         {user.corporateStatus === "pending" ? <Text style={styles.note}>Žádost zpracovává dispečer. O výsledku dostanete oznámení.</Text> : null}
         {user.corporateStatus === "none" && !showCorporate ? <><Text style={styles.note}>Firemní účet umožňuje souhrnnou 14denní fakturaci.</Text><AppButton title="Požádat o firemní účet" variant="secondary" onPress={() => setShowCorporate(true)} style={styles.topGap} /></> : null}
@@ -357,6 +397,10 @@ const styles = StyleSheet.create({
   topGap: { marginTop: spacing.md },
   twoColumns: { flexDirection: "row", gap: spacing.md },
   column: { flex: 1 },
+  paymentOption: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 46, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  paymentOptionActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  paymentOptionText: { color: colors.textMuted, fontSize: 12, fontWeight: "700" },
+  paymentOptionTextActive: { color: colors.primaryText },
   logout: { marginBottom: spacing.sm },
   templateList: { gap: spacing.md },
   templateInactive: { opacity: 0.58 },

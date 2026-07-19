@@ -19,6 +19,7 @@ const userObjectValidator = v.object({
   companyAddress: v.optional(v.string()),
   companyIco: v.optional(v.string()),
   companyDic: v.optional(v.string()),
+  paymentPreference: v.optional(v.union(v.literal("invoice"), v.literal("card"))),
   vehicleType: v.optional(v.string()),
   vehiclePlate: v.optional(v.string()),
   driverNotes: v.optional(v.string()),
