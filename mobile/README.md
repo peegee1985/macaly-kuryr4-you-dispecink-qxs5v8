@@ -2,6 +2,9 @@
 
 Nativní mobilní klient postavený v React Native/Expo. Aplikace není PWA ani WebView; výstupem je standardní APK nebo AAB.
 
+Roadmapa skutečných push notifikací, akcí v oznámeních a dispečerského Android
+widgetu je v [`../docs/NATIVE_ANDROID_PUSH_ACTIONS_WIDGET_ROADMAP.md`](../docs/NATIVE_ANDROID_PUSH_ACTIONS_WIDGET_ROADMAP.md).
+
 ## První spuštění
 
 1. Zkopírujte `.env.example` jako `.env`.
