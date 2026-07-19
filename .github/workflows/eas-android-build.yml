@@ -2,17 +2,9 @@ name: Expo Android releases
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "mobile/**"
-      - "mobile-dispatcher/**"
-      - ".github/workflows/eas-android-build.yml"
   push:
     branches:
       - main
-      - release/eas-aab-gamification
     paths:
       - "mobile/**"
       - "mobile-dispatcher/**"
@@ -22,8 +14,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: eas-android-refs/heads/${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: true
+  group: eas-android-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -32,11 +24,11 @@ jobs:
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EAS_NO_VCS: "1"
-      TARGET_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+      TARGET_BRANCH: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          ref: ${{ github.ref_name }}
 
       - uses: actions/setup-node@v4
         with:
