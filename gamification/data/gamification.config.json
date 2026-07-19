@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "timezone": "Europe/Prague",
+  "weekStartsOn": "monday",
+  "featureFlags": {
+    "gamificationEnabled": true,
+    "seasonLeaderboardEnabled": false,
+    "realRewardsEnabled": false
+  },
+  "levelFormula": { "type": "quadratic", "coefficient": 250, "expression": "250 * (level - 1)^2", "maxLevel": 30 },
+  "titles": [
+    { "minLevel": 1, "title": "Nováček" },
+    { "minLevel": 3, "title": "Aktivní kurýr" },
+    { "minLevel": 5, "title": "Kurýr v tempu" },
+    { "minLevel": 8, "title": "Spolehlivý kurýr" },
+    { "minLevel": 10, "title": "Zkušený kurýr" },
+    { "minLevel": 15, "title": "Mistr tras" },
+    { "minLevel": 20, "title": "Elitní kurýr" },
+    { "minLevel": 30, "title": "Legenda K4Y" }
+  ],
+  "xpEvents": [
+    { "type": "ride_completed", "xp": 100, "eventKey": "ride:{rideId}:delivered", "limit": "once_per_ride" },
+    { "type": "pod_complete", "xp": 15, "eventKey": "ride:{rideId}:pod", "limit": "once_per_ride" },
+    { "type": "pod_photo_and_signature", "xp": 5, "eventKey": "ride:{rideId}:pod:full", "limit": "once_per_ride" },
+    { "type": "pickup_on_time", "xp": 15, "eventKey": "ride:{rideId}:pickup:on-time", "limit": "once_per_ride" },
+    { "type": "delivery_on_time", "xp": 25, "eventKey": "ride:{rideId}:delivery:on-time", "limit": "once_per_ride" },
+    { "type": "intermediate_stop", "xp": 10, "eventKey": "ride:{rideId}:stop:{stopId}", "maxXpPerRide": 50 },
+    { "type": "rating_five", "xp": 20, "eventKey": "ride:{rideId}:rating:5", "limit": "once_per_verified_rating" },
+    { "type": "vending_visit_completed", "xp": 80, "eventKey": "visit:{visitId}:completed", "limit": "once_per_visit" },
+    { "type": "vending_checklist_complete", "xp": 20, "eventKey": "visit:{visitId}:checklist", "limit": "once_per_visit" }
+  ],
+  "rewardRanges": {
+    "daily": { "min": 50, "max": 150 },
+    "weekly": { "min": 250, "max": 600 },
+    "monthly": { "min": 800, "max": 2000 },
+    "manual": { "min": -2000, "max": 2000, "reasonRequired": true }
+  },
+  "assignment": { "maxDailyChallenges": 3, "adaptiveToAssignedWork": true, "dailyAssignment": "on_schedule_or_first_assigned_ride" },
+  "challengeTemplates": [
+    { "code": "daily_rides", "cadence": "daily", "metric": "rides_completed", "adaptiveTargets": [1, 2, 3], "rewardXp": 100 },
+    { "code": "daily_complete_pod", "cadence": "daily", "metric": "pod_completion_ratio", "target": 1, "rewardXp": 75 },
+    { "code": "daily_on_time", "cadence": "daily", "metric": "on_time_ratio", "target": 1, "rewardXp": 100 },
+    { "code": "daily_gps_available", "cadence": "daily", "metric": "gps_availability_ratio", "target": 0.9, "rewardXp": 50 },
+    { "code": "daily_vending_checklists", "cadence": "daily", "metric": "vending_checklist_ratio", "target": 1, "rewardXp": 75 },
+    { "code": "weekly_reliable", "cadence": "weekly", "metric": "on_time_ratio", "target": 0.95, "rewardXp": 400 },
+    { "code": "weekly_pod_pro", "cadence": "weekly", "metric": "pod_completion_ratio", "target": 1, "rewardXp": 350 },
+    { "code": "weekly_multi_stop", "cadence": "weekly", "metric": "multi_stop_routes", "adaptiveTargets": [1, 3, 5], "rewardXp": 350 },
+    { "code": "weekly_streak", "cadence": "weekly", "metric": "active_days", "target": 5, "rewardXp": 500 },
+    { "code": "weekly_no_claim", "cadence": "weekly", "metric": "confirmed_claims", "target": 0, "minimumWorkload": 5, "rewardXp": 300 },
+    { "code": "monthly_volume", "cadence": "monthly", "metric": "rides_completed", "adaptiveTargets": [25, 50, 100], "rewardXp": 1200 },
+    { "code": "monthly_on_time", "cadence": "monthly", "metric": "on_time_ratio", "target": 0.95, "minimumWorkload": 20, "rewardXp": 1200 },
+    { "code": "monthly_rating", "cadence": "monthly", "metric": "average_rating", "target": 4.8, "minimumRatings": 10, "rewardXp": 1500 },
+    { "code": "monthly_success", "cadence": "monthly", "metric": "completion_ratio", "target": 0.98, "minimumWorkload": 20, "rewardXp": 1500 },
+    { "code": "monthly_pod", "cadence": "monthly", "metric": "pod_completion_ratio", "target": 0.95, "minimumWorkload": 20, "rewardXp": 1000 }
+  ],
+  "badges": [
+    { "code": "first_delivery", "name": "První zásilka", "metric": "rides_completed", "tiers": { "bronze": 1, "silver": 10, "gold": 50, "platinum": 100 } },
+    { "code": "always_on_time", "name": "Vždy včas", "metric": "on_time_deliveries", "tiers": { "bronze": 10, "silver": 50, "gold": 200, "platinum": 500 } },
+    { "code": "pod_professional", "name": "POD profesionál", "metric": "complete_pods", "tiers": { "bronze": 10, "silver": 50, "gold": 250, "platinum": 1000 } },
+    { "code": "multi_stop_master", "name": "Mistr vícezastávkových tras", "metric": "multi_stop_routes", "tiers": { "bronze": 10, "silver": 50, "gold": 200, "platinum": 500 } },
+    { "code": "reliable_partner", "name": "Spolehlivý partner", "metric": "active_days", "tiers": { "bronze": 7, "silver": 30, "gold": 180, "platinum": 365 } },
+    { "code": "gps_guardian", "name": "Strážce GPS", "metric": "days_gps_over_90_percent", "tiers": { "bronze": 7, "silver": 30, "gold": 90, "platinum": 365 } },
+    { "code": "customer_favorite", "name": "Oblíbenec zákazníků", "metric": "five_star_ratings", "tiers": { "bronze": 5, "silver": 25, "gold": 100, "platinum": 250 } },
+    { "code": "kilometer_hero", "name": "Kilometrový hrdina", "metric": "active_ride_km", "tiers": { "bronze": 100, "silver": 1000, "gold": 5000, "platinum": 10000 } },
+    { "code": "team_player", "name": "Týmový hráč", "metric": "dispatcher_team_awards", "tiers": { "bronze": 1, "silver": 5, "gold": 15, "platinum": 30 } },
+    { "code": "perfect_week", "name": "Perfektní týden", "metric": "perfect_weeks", "tiers": { "bronze": 1, "silver": 4, "gold": 12, "platinum": 26 } },
+    { "code": "deliveries_250", "name": "250 doručení", "metric": "rides_completed", "tiers": { "bronze": 250, "silver": 500, "gold": 750, "platinum": 1000 } },
+    { "code": "k4y_legend", "name": "Legenda K4Y", "metric": "level", "tiers": { "bronze": 10, "silver": 15, "gold": 20, "platinum": 30 } }
+  ]
+}
+
