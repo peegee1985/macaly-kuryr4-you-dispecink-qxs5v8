@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "badgeSprite": "../assets/badge-sprite.svg",
+  "uiSprite": "../assets/gamification-ui.svg",
+  "rendering": {
+    "viewBox": "0 0 128 128",
+    "layerOrder": ["tierFrameSymbol", "iconSymbol"],
+    "lockedTier": "tier-locked"
+  },
+  "tierFrameSymbols": {
+    "locked": "tier-locked",
+    "bronze": "tier-bronze",
+    "silver": "tier-silver",
+    "gold": "tier-gold",
+    "platinum": "tier-platinum"
+  },
+  "badges": {
+    "first_delivery": "badge-icon-first-delivery",
+    "always_on_time": "badge-icon-always-on-time",
+    "pod_professional": "badge-icon-pod-professional",
+    "multi_stop_master": "badge-icon-multi-stop-master",
+    "reliable_partner": "badge-icon-reliable-partner",
+    "gps_guardian": "badge-icon-gps-guardian",
+    "customer_favorite": "badge-icon-customer-favorite",
+    "kilometer_hero": "badge-icon-kilometer-hero",
+    "team_player": "badge-icon-team-player",
+    "perfect_week": "badge-icon-perfect-week",
+    "deliveries_250": "badge-icon-deliveries-250",
+    "k4y_legend": "badge-icon-k4y-legend"
+  },
+  "uiSymbols": {
+    "xp": "ui-xp-star",
+    "streak": "ui-streak-flame",
+    "levelUp": "ui-level-up-burst",
+    "locked": "ui-locked-badge",
+    "confetti": "ui-confetti"
+  }
+}
+
