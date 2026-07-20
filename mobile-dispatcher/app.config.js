@@ -3,7 +3,7 @@ module.exports = {
     name: "Kuryr4You Dispečink",
     slug: "kuryr4you-dispecink",
     scheme: "kuryr4you-dispatcher",
-    version: "1.3.1",
+    version: "1.3.2",
     orientation: "portrait",
     userInterfaceStyle: "dark",
     backgroundColor: "#0F111A",
@@ -11,7 +11,7 @@ module.exports = {
     icon: "./assets/icon.png",
     android: {
       package: "cz.kuryr4you.dispatcher",
-      versionCode: 6,
+      versionCode: 7,
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#0F111A",
