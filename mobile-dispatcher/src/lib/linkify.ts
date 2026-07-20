@@ -1,3 +1,4 @@
+// Build trigger: rebuild driver AAB and dispatcher APK after Expo credits restored.
 export type MessageSegment =
   | { kind: "text"; text: string }
   | { kind: "link"; text: string; url: string };
