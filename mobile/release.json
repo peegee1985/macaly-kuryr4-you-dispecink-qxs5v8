@@ -1,9 +1,11 @@
 {
-  "version": "0.7.0",
-  "versionCode": 8,
+  "version": "0.7.1",
+  "versionCode": 9,
   "minimumVersionCode": 5,
   "downloadUrl": "https://github.com/peegee1985/macaly-kuryr4-you-dispecink-qxs5v8/releases/download/driver-latest/kuryr4you-ridic.apk",
   "releaseNotes": [
+    "Klikatelné odkazy v chatu — podporuje https, http, www i domény bez protokolu",
+    "Odkazy se otevírají přímo v systémovém prohlížeči nebo příslušné aplikaci",
     "Připravené originální grafiky všech gamifikačních odznaků přímo v nativní aplikaci",
     "Detail odznaku s úrovní, popisem a postupem k další úrovni",
     "Originální grafika XP, série a nové úrovně",
