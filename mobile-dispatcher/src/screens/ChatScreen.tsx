@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { EmptyState, PageHeader, Screen } from "../components/ui";
+import { LinkifiedText } from "../components/LinkifiedText";
 import { formatDateTime } from "../lib/format";
 import { api } from "../lib/api";
 import { colors, radius, spacing } from "../theme";
@@ -98,7 +99,12 @@ function Conversation({ user, partner, onBack }: { user: DispatcherUser; partner
             return (
               <View style={[styles.bubbleWrap, mine ? styles.bubbleWrapMine : styles.bubbleWrapOther]}>
                 <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}>
-                  <Text style={[styles.messageText, mine && styles.messageTextMine]}>{item.text}</Text>
+                  <LinkifiedText
+                    linkStyle={[styles.messageLink, mine && styles.messageLinkMine]}
+                    style={[styles.messageText, mine && styles.messageTextMine]}
+                  >
+                    {item.text}
+                  </LinkifiedText>
                   <Text style={[styles.messageDate, mine && styles.messageDateMine]}>{formatDateTime(item._creationTime)}</Text>
                 </View>
               </View>
@@ -167,6 +173,8 @@ const styles = StyleSheet.create({
   bubbleOther: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderBottomLeftRadius: 5 },
   messageText: { color: colors.text, fontSize: 14, lineHeight: 20 },
   messageTextMine: { color: colors.primaryText },
+  messageLink: { color: colors.primary, fontWeight: "800", textDecorationLine: "underline" },
+  messageLinkMine: { color: "#172554" },
   messageDate: { color: colors.textMuted, fontSize: 8, marginTop: 5 },
   messageDateMine: { color: "rgba(17,19,24,0.62)", textAlign: "right" },
   emptyConversation: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 70, paddingHorizontal: spacing.xl },
