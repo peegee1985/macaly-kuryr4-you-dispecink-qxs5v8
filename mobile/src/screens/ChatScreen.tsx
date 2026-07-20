@@ -15,6 +15,7 @@ import {
 } from "react-native";
 
 import { EmptyState, PageHeader, Screen } from "../components/ui";
+import { LinkifiedText } from "../components/LinkifiedText";
 import { api } from "../lib/api";
 import { colors, radius, spacing } from "../theme";
 import type { ChatConversation, ChatMessage, ChatUser, DriverUser } from "../types";
@@ -158,7 +159,12 @@ function Conversation({ user, partner, onBack }: { user: DriverUser; partner: Pa
             return (
               <View style={[styles.messageRow, mine && styles.messageRowMine]}>
                 <View style={[styles.bubble, mine && styles.bubbleMine]}>
-                  <Text style={[styles.messageText, mine && styles.messageTextMine]}>{item.text}</Text>
+                  <LinkifiedText
+                    linkStyle={[styles.messageLink, mine && styles.messageLinkMine]}
+                    style={[styles.messageText, mine && styles.messageTextMine]}
+                  >
+                    {item.text}
+                  </LinkifiedText>
                   <Text style={[styles.messageTime, mine && styles.messageTimeMine]}>
                     {new Intl.DateTimeFormat("cs-CZ", { hour: "2-digit", minute: "2-digit" }).format(item._creationTime)}
                   </Text>
@@ -224,6 +230,8 @@ const styles = StyleSheet.create({
   bubbleMine: { backgroundColor: colors.primary, borderColor: colors.primary, borderBottomLeftRadius: 16, borderBottomRightRadius: 5 },
   messageText: { color: colors.text, fontSize: 14, lineHeight: 20 },
   messageTextMine: { color: colors.primaryText },
+  messageLink: { color: colors.primary, fontWeight: "800", textDecorationLine: "underline" },
+  messageLinkMine: { color: "#172554" },
   messageTime: { color: colors.textMuted, fontSize: 9, marginTop: 4, textAlign: "right" },
   messageTimeMine: { color: "rgba(17,19,24,0.65)" },
   composer: { flexDirection: "row", alignItems: "flex-end", gap: spacing.sm, padding: spacing.md, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
