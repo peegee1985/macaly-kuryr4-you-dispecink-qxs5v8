@@ -1,3 +1,4 @@
+// Build trigger: stable 0.7.0 with clickable chat links.
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
