@@ -3,7 +3,7 @@ module.exports = {
     name: "Kuryr4You Dispečink",
     slug: "kuryr4you-dispecink",
     scheme: "kuryr4you-dispatcher",
-    version: "1.3.1",
+    version: "1.4.0",
     orientation: "portrait",
     userInterfaceStyle: "dark",
     backgroundColor: "#0F111A",
@@ -11,12 +11,12 @@ module.exports = {
     icon: "./assets/icon.png",
     android: {
       package: "cz.kuryr4you.dispatcher",
-      versionCode: 6,
+      versionCode: 7,
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#0F111A",
       },
-      permissions: ["android.permission.POST_NOTIFICATIONS"],
+      permissions: ["android.permission.POST_NOTIFICATIONS", "android.permission.CAMERA"],
       predictiveBackGestureEnabled: true,
     },
     extra: {
@@ -35,6 +35,13 @@ module.exports = {
         },
       ],
       ["expo-secure-store", { configureAndroidBackup: true }],
+      [
+        "expo-image-picker",
+        {
+          photosPermission: "Kuryr4You Dispečink potřebuje přístup k fotografiím pro chat.",
+          cameraPermission: "Kuryr4You Dispečink potřebuje fotoaparát pro chat.",
+        },
+      ],
       "./plugins/withDispatcherAppName",
       "./plugins/withStandaloneApk",
       "expo-font",

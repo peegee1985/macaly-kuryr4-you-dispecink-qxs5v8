@@ -1,10 +1,14 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import * as FileSystem from "expo-file-system/legacy";
+import * as ImagePicker from "expo-image-picker";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   FlatList,
+  Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -15,11 +19,13 @@ import {
 } from "react-native";
 
 import { EmptyState, PageHeader, Screen } from "../components/ui";
+import { LinkifiedText } from "../components/LinkifiedText";
 import { api } from "../lib/api";
 import { colors, radius, spacing } from "../theme";
 import type { ChatConversation, ChatMessage, ChatUser, DriverUser } from "../types";
 
 type Partner = { id: string; name: string; role?: string };
+type PickedChatImage = { uri: string; mimeType: string; fileName?: string; fileSize?: number };
 
 export function ChatScreen({ user }: { user: DriverUser }) {
   const conversations = useQuery(api.chat.getMyConversations, {}) as ChatConversation[] | undefined;
@@ -106,9 +112,12 @@ export function ChatScreen({ user }: { user: DriverUser }) {
 function Conversation({ user, partner, onBack }: { user: DriverUser; partner: Partner; onBack: () => void }) {
   const messages = useQuery(api.chat.getMessages, { partnerId: partner.id }) as ChatMessage[] | undefined;
   const sendMessage = useMutation(api.chat.sendMessage);
+  const generateImageUploadUrl = useMutation(api.chat.generateImageUploadUrl);
   const markRead = useMutation(api.chat.markConversationRead);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [pickedImage, setPickedImage] = useState<PickedChatImage | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
   useEffect(() => {
@@ -117,16 +126,81 @@ function Conversation({ user, partner, onBack }: { user: DriverUser; partner: Pa
 
   const send = async () => {
     const value = text.trim();
-    if (!value || sending) return;
+    if ((!value && !pickedImage) || sending) return;
     setSending(true);
     try {
-      await sendMessage({ receiverId: partner.id, text: value });
+      let imageStorageId: string | undefined;
+      if (pickedImage) {
+        const uploadUrl = await generateImageUploadUrl({});
+        const response = await FileSystem.uploadAsync(uploadUrl, pickedImage.uri, {
+          httpMethod: "POST",
+          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          headers: { "Content-Type": pickedImage.mimeType },
+        });
+        if (response.status < 200 || response.status >= 300) {
+          throw new Error(`Fotografii se nepodařilo nahrát (HTTP ${response.status}).`);
+        }
+        const payload = JSON.parse(response.body) as { storageId?: string };
+        if (!payload.storageId) throw new Error("Server nevrátil identifikátor fotografie.");
+        imageStorageId = payload.storageId;
+      }
+
+      await sendMessage({
+        receiverId: partner.id,
+        text: value,
+        imageStorageId,
+        imageMimeType: pickedImage?.mimeType,
+        imageName: pickedImage?.fileName,
+      });
       setText("");
+      setPickedImage(null);
     } catch (cause) {
       Alert.alert("Zprávu nelze odeslat", cause instanceof Error ? cause.message : "Zkuste to znovu.");
     } finally {
       setSending(false);
     }
+  };
+
+  const useImage = (asset: ImagePicker.ImagePickerAsset) => {
+    if (asset.fileSize && asset.fileSize > 12 * 1024 * 1024) {
+      Alert.alert("Fotografie je příliš velká", "Vyberte fotografii menší než 12 MB.");
+      return;
+    }
+    setPickedImage({
+      uri: asset.uri,
+      mimeType: asset.mimeType || "image/jpeg",
+      fileName: asset.fileName || `chat-${Date.now()}.jpg`,
+      fileSize: asset.fileSize,
+    });
+  };
+
+  const takePhoto = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Fotoaparát není povolen", "Povolte fotoaparát v nastavení telefonu.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.72 });
+    if (!result.canceled && result.assets[0]) useImage(result.assets[0]);
+  };
+
+  const choosePhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Fotografie nejsou povoleny", "Povolte přístup k fotografiím v nastavení telefonu.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.72 });
+    if (!result.canceled && result.assets[0]) useImage(result.assets[0]);
+  };
+
+  const showImageMenu = () => {
+    if (sending) return;
+    Alert.alert("Přidat fotografii", "Vyberte zdroj fotografie.", [
+      { text: "Vyfotit", onPress: () => void takePhoto() },
+      { text: "Vybrat z galerie", onPress: () => void choosePhoto() },
+      { text: "Zrušit", style: "cancel" },
+    ]);
   };
 
   return (
@@ -158,7 +232,18 @@ function Conversation({ user, partner, onBack }: { user: DriverUser; partner: Pa
             return (
               <View style={[styles.messageRow, mine && styles.messageRowMine]}>
                 <View style={[styles.bubble, mine && styles.bubbleMine]}>
-                  <Text style={[styles.messageText, mine && styles.messageTextMine]}>{item.text}</Text>
+                  {item.imageUrl ? (
+                    <Pressable accessibilityRole="imagebutton" accessibilityLabel="Otevřít fotografii" onPress={() => setPreviewUrl(item.imageUrl ?? null)}>
+                      <Image source={{ uri: item.imageUrl }} style={styles.messageImage} resizeMode="cover" />
+                    </Pressable>
+                  ) : null}
+                  {item.text ? (
+                    <LinkifiedText
+                      text={item.text}
+                      style={[styles.messageText, mine && styles.messageTextMine]}
+                      linkStyle={mine ? styles.messageLinkMine : styles.messageLink}
+                    />
+                  ) : null}
                   <Text style={[styles.messageTime, mine && styles.messageTimeMine]}>
                     {new Intl.DateTimeFormat("cs-CZ", { hour: "2-digit", minute: "2-digit" }).format(item._creationTime)}
                   </Text>
@@ -168,7 +253,22 @@ function Conversation({ user, partner, onBack }: { user: DriverUser; partner: Pa
           }}
         />
 
+        {pickedImage ? (
+          <View style={styles.selectedImageRow}>
+            <Image source={{ uri: pickedImage.uri }} style={styles.selectedImage} />
+            <View style={styles.selectedImageCopy}>
+              <Text style={styles.selectedImageTitle}>Fotografie připravena</Text>
+              <Text style={styles.selectedImageHint}>Odešle se spolu se zprávou.</Text>
+            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel="Odebrat fotografii" onPress={() => setPickedImage(null)} style={styles.removeImage}>
+              <Ionicons name="close" size={20} color={colors.text} />
+            </Pressable>
+          </View>
+        ) : null}
         <View style={styles.composer}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Přidat fotografii" disabled={sending} onPress={showImageMenu} style={styles.attach}>
+            <Ionicons name="camera-outline" size={22} color={colors.primary} />
+          </Pressable>
           <TextInput
             value={text}
             onChangeText={setText}
@@ -181,13 +281,22 @@ function Conversation({ user, partner, onBack }: { user: DriverUser; partner: Pa
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Odeslat zprávu"
-            disabled={!text.trim() || sending}
+            disabled={(!text.trim() && !pickedImage) || sending}
             onPress={() => void send()}
-            style={[styles.send, (!text.trim() || sending) && styles.sendDisabled]}
+            style={[styles.send, ((!text.trim() && !pickedImage) || sending) && styles.sendDisabled]}
           >
             <Ionicons name={sending ? "time-outline" : "send"} size={20} color={colors.primaryText} />
           </Pressable>
         </View>
+
+        <Modal visible={Boolean(previewUrl)} transparent animationType="fade" onRequestClose={() => setPreviewUrl(null)}>
+          <View style={styles.imageViewer}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Zavřít fotografii" onPress={() => setPreviewUrl(null)} style={styles.imageViewerClose}>
+              <Ionicons name="close" size={28} color={colors.white} />
+            </Pressable>
+            {previewUrl ? <Image source={{ uri: previewUrl }} style={styles.imageViewerImage} resizeMode="contain" /> : null}
+          </View>
+        </Modal>
       </Screen>
     </KeyboardAvoidingView>
   );
@@ -224,10 +333,23 @@ const styles = StyleSheet.create({
   bubbleMine: { backgroundColor: colors.primary, borderColor: colors.primary, borderBottomLeftRadius: 16, borderBottomRightRadius: 5 },
   messageText: { color: colors.text, fontSize: 14, lineHeight: 20 },
   messageTextMine: { color: colors.primaryText },
+  messageLink: { color: "#7DD3FC" },
+  messageLinkMine: { color: "#0B3A75" },
+  messageImage: { width: 230, height: 172, maxWidth: "100%", borderRadius: 12, marginBottom: 4, backgroundColor: colors.surface },
   messageTime: { color: colors.textMuted, fontSize: 9, marginTop: 4, textAlign: "right" },
   messageTimeMine: { color: "rgba(17,19,24,0.65)" },
+  selectedImageRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.sm, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
+  selectedImage: { width: 54, height: 54, borderRadius: 12, backgroundColor: colors.surfaceRaised },
+  selectedImageCopy: { flex: 1 },
+  selectedImageTitle: { color: colors.text, fontSize: 12, fontWeight: "800" },
+  selectedImageHint: { color: colors.textMuted, fontSize: 10, marginTop: 2 },
+  removeImage: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceRaised },
   composer: { flexDirection: "row", alignItems: "flex-end", gap: spacing.sm, padding: spacing.md, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
+  attach: { width: 46, height: 46, borderRadius: 15, backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   composerInput: { flex: 1, minHeight: 44, maxHeight: 110, color: colors.text, backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: spacing.md, paddingTop: 11, paddingBottom: 10, fontSize: 14 },
   send: { width: 46, height: 46, borderRadius: 15, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
   sendDisabled: { opacity: 0.35 },
+  imageViewer: { flex: 1, backgroundColor: "rgba(0,0,0,0.94)", alignItems: "center", justifyContent: "center" },
+  imageViewerClose: { position: "absolute", top: 42, right: spacing.lg, zIndex: 2, width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.14)" },
+  imageViewerImage: { width: "100%", height: "82%" },
 });

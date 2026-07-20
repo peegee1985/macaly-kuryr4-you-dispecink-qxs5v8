@@ -86,6 +86,10 @@ export type ChatMessage = {
   senderId: string;
   receiverId: string;
   text: string;
+  imageStorageId?: string;
+  imageUrl?: string | null;
+  imageMimeType?: string;
+  imageName?: string;
   read: boolean;
 };
 

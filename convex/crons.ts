@@ -14,6 +14,9 @@ export const purgeOldChatMessages = internalMutation({
     const toDelete = old.filter(m => m._creationTime < cutoff)
     console.log(`Purging ${toDelete.length} chat messages older than 90 days`)
     for (const msg of toDelete) {
+      if (msg.imageStorageId) {
+        await ctx.storage.delete(msg.imageStorageId)
+      }
       await ctx.db.delete(msg._id)
     }
   },

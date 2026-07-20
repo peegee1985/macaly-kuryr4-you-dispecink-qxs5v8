@@ -66,11 +66,19 @@ jobs:
 
       - name: Nainstalovat a zkontrolovat obě aplikace
         run: |
+          npm ci
           npm ci --prefix mobile
           npm run typecheck --prefix mobile
           npm ci --prefix mobile-dispatcher
           npm run typecheck --prefix mobile-dispatcher
           npx expo-doctor mobile-dispatcher
+
+      - name: Nasadit chatový backend Convex
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+        run: |
+          test -n "$CONVEX_DEPLOY_KEY" || { echo "::error::V GitHub Actions chybí secret CONVEX_DEPLOY_KEY"; exit 1; }
+          npx convex deploy
 
       - name: Napojit projekty na EAS
         run: |
@@ -97,6 +105,17 @@ jobs:
           test -n "$DRIVER_URL" && test "$DRIVER_URL" != "null"
           curl --fail --location "$DRIVER_URL" --output kuryr4you-ridic.aab
 
+      - name: Sestavit instalační APK řidiče
+        if: steps.changes.outputs.driver == 'true'
+        run: |
+          (cd mobile && npx eas-cli@21.0.2 build --platform android --profile preview --non-interactive --wait --json > ../driver-apk-build.json)
+          DRIVER_APK_URL=$(jq -r '.[0].artifacts.buildUrl' driver-apk-build.json)
+          test -n "$DRIVER_APK_URL" && test "$DRIVER_APK_URL" != "null"
+          curl --fail --location "$DRIVER_APK_URL" --output kuryr4you-ridic.apk
+          unzip -p kuryr4you-ridic.apk assets/app.config | jq -e '.version == "0.8.0" and .android.package == "cz.kuryr4you.driver"'
+          unzip -p kuryr4you-ridic.apk assets/index.android.bundle > driver-index.android.bundle
+          grep -aFq "https://amicable-dogfish-440.eu-west-1.convex.cloud" driver-index.android.bundle
+
       - name: Sestavit instalační APK dispečinku
         if: steps.changes.outputs.dispatcher == 'true'
         run: |
@@ -104,7 +123,7 @@ jobs:
           DISPATCHER_URL=$(jq -r '.[0].artifacts.buildUrl' dispatcher-build.json)
           test -n "$DISPATCHER_URL" && test "$DISPATCHER_URL" != "null"
           curl --fail --location "$DISPATCHER_URL" --output kuryr4you-dispecink.apk
-          unzip -p kuryr4you-dispecink.apk assets/app.config | jq -e '.version == "1.3.1" and .android.package == "cz.kuryr4you.dispatcher"'
+          unzip -p kuryr4you-dispecink.apk assets/app.config | jq -e '.version == "1.4.0" and .android.package == "cz.kuryr4you.dispatcher"'
           unzip -p kuryr4you-dispecink.apk assets/index.android.bundle > dispatcher-index.android.bundle
           grep -aFq "https://amicable-dogfish-440.eu-west-1.convex.cloud" dispatcher-index.android.bundle
 
@@ -113,6 +132,7 @@ jobs:
           name: android-release-files
           path: |
             kuryr4you-ridic.aab
+            kuryr4you-ridic.apk
             kuryr4you-dispecink.apk
           if-no-files-found: error
           retention-days: 30
@@ -122,13 +142,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view dispatcher-latest >/dev/null 2>&1 || gh release create dispatcher-latest --title "Kuryr4You Dispečink 1.3.1" --notes "Plnohodnotná nativní aplikace dispečinku s mapou, gamifikací, zakázkami, chatem a notifikacemi."
+          gh release view dispatcher-latest >/dev/null 2>&1 || gh release create dispatcher-latest --title "Kuryr4You Dispečink 1.4.0" --notes "Klikatelné odkazy a fotografie v nativním chatu."
           gh release upload dispatcher-latest kuryr4you-dispecink.apk --clobber
 
-      - name: Publikovat řidičské AAB na GitHub
+      - name: Publikovat řidičské APK a AAB na GitHub
         if: github.ref == 'refs/heads/main' && steps.changes.outputs.driver == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view driver-latest >/dev/null 2>&1 || gh release create driver-latest --title "Kuryr4You Řidič 0.7.0" --notes "Google Play AAB s gamifikací, výzvami a originálními odznaky."
-          gh release upload driver-latest kuryr4you-ridic.aab --clobber
+          gh release view driver-latest >/dev/null 2>&1 || gh release create driver-latest --title "Kuryr4You Řidič 0.8.0" --notes "Klikatelné odkazy a fotografie v nativním chatu."
+          gh release upload driver-latest kuryr4you-ridic.apk kuryr4you-ridic.aab --clobber

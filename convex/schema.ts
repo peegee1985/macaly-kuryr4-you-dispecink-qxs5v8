@@ -226,6 +226,9 @@ export default defineSchema({
     receiverId: v.id("users"),
     conversationKey: v.string(), // sorted([senderId, receiverId]).join("_")
     text: v.string(),
+    imageStorageId: v.optional(v.id("_storage")),
+    imageMimeType: v.optional(v.string()),
+    imageName: v.optional(v.string()),
     read: v.boolean(),
   })
     .index("by_conversation", ["conversationKey"])

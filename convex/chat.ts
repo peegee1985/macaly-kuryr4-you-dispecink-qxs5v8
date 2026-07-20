@@ -62,7 +62,7 @@ export const getMyConversations = query({
         partnerId,
         partnerName: partner.name ?? partner.email,
         partnerRole: partner.role,
-        lastMessage: msg.text,
+        lastMessage: msg.text || (msg.imageStorageId ? "📷 Fotografie" : "Zpráva"),
         lastAt: msg._creationTime,
         unread: partnerUnread[partnerId] ?? 0,
       })
@@ -89,7 +89,13 @@ export const getMessages = query({
       .withIndex("by_conversation", q => q.eq("conversationKey", key))
       .order("asc")
       .take(500)
-    return all.filter(m => m._creationTime >= cutoff)
+    const recent = all.filter(m => m._creationTime >= cutoff)
+    return await Promise.all(recent.map(async (message) => ({
+      ...message,
+      imageUrl: message.imageStorageId
+        ? await ctx.storage.getUrl(message.imageStorageId)
+        : null,
+    })))
   },
 })
 
@@ -115,7 +121,12 @@ export const getArchivedMessages = query({
       .take(1000)
     const archived = all.filter(m => m._creationTime < cutoff)
     const limit = args.limit ?? 100
-    return archived.slice(0, limit).reverse()
+    return await Promise.all(archived.slice(0, limit).reverse().map(async (message) => ({
+      ...message,
+      imageUrl: message.imageStorageId
+        ? await ctx.storage.getUrl(message.imageStorageId)
+        : null,
+    })))
   },
 })
 
@@ -140,11 +151,28 @@ export const getArchivedMessageCount = query({
   },
 })
 
-// Send a message
+// Generate a short-lived upload URL for a chat image. Only chat-enabled roles
+// can create one; the image itself is only exposed through participant queries.
+export const generateImageUploadUrl = mutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => {
+    const authId = await getAuthUserId(ctx)
+    if (!authId) throw new Error("Nepřihlášen")
+    const me = await ctx.db.get(authId as Id<"users">)
+    if (!me || !canUseChat(me.role)) throw new Error("Nemáte oprávnění používat chat")
+    return await ctx.storage.generateUploadUrl()
+  },
+})
+
+// Send a text message, an image, or both.
 export const sendMessage = mutation({
   args: {
     receiverId: v.id("users"),
-    text: v.string(),
+    text: v.optional(v.string()),
+    imageStorageId: v.optional(v.id("_storage")),
+    imageMimeType: v.optional(v.string()),
+    imageName: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -158,9 +186,20 @@ export const sendMessage = mutation({
     if (!canUseChat(receiver.role)) throw new Error("Tomuto účtu nelze poslat zprávu")
     if (receiver._id === me._id) throw new Error("Nelze poslat zprávu sám sobě")
 
-    const text = args.text.trim()
-    if (!text) throw new Error("Zpráva je prázdná")
+    const text = args.text?.trim() ?? ""
+    if (!text && !args.imageStorageId) throw new Error("Zpráva je prázdná")
     if (text.length > 2000) throw new Error("Zpráva je příliš dlouhá")
+
+    let imageMimeType: string | undefined
+    let imageName: string | undefined
+    if (args.imageStorageId) {
+      const metadata = await ctx.storage.getMetadata(args.imageStorageId)
+      if (!metadata) throw new Error("Fotografie nebyla nalezena")
+      imageMimeType = metadata.contentType ?? args.imageMimeType
+      if (!imageMimeType?.startsWith("image/")) throw new Error("Příloha musí být obrázek")
+      if (metadata.size > 12 * 1024 * 1024) throw new Error("Fotografie může mít nejvýše 12 MB")
+      imageName = args.imageName?.trim().slice(0, 200) || undefined
+    }
 
     const key = makeConversationKey(me._id, args.receiverId)
     await ctx.db.insert("chatMessages", {
@@ -168,9 +207,13 @@ export const sendMessage = mutation({
       receiverId: args.receiverId,
       conversationKey: key,
       text,
+      imageStorageId: args.imageStorageId,
+      imageMimeType,
+      imageName,
       read: false,
     })
-    console.log(`Chat: ${me.name ?? me.email} → ${args.receiverId}: ${text.substring(0, 50)}`)
+    const notificationText = text || "📷 Fotografie"
+    console.log(`Chat: ${me.name ?? me.email} → ${args.receiverId}: ${notificationText.substring(0, 50)}`)
 
     // Push notifikace příjemci
     const senderName = me.name ?? me.email ?? "Neznámý"
@@ -180,7 +223,7 @@ export const sendMessage = mutation({
     await ctx.scheduler.runAfter(0, internal.pushNotificationsActions.sendPushToUser, {
       userId: args.receiverId,
       title: `💬 ${senderName}`,
-      body: text.substring(0, 100),
+      body: notificationText.substring(0, 100),
       url: targetUrl,
       tag: `chat-${me._id}`,
     })
