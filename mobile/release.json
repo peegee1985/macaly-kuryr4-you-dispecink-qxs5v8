@@ -4,6 +4,7 @@
   "minimumVersionCode": 5,
   "downloadUrl": "https://github.com/peegee1985/macaly-kuryr4-you-dispecink-qxs5v8/releases/download/driver-latest/kuryr4you-ridic.apk",
   "releaseNotes": [
+    "Opravený posuvník potvrzení — každý swipe provede správný krok zakázky",
     "Aplikace hlásí dispečinku stav online i bez zapnuté GPS",
     "Dispečink dostává oznámení o přihlášení a odhlášení řidiče",
     "Připravené originální grafiky všech gamifikačních odznaků přímo v nativní aplikaci",

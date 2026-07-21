@@ -30,8 +30,15 @@ export function SlideToConfirm({
   const [trackWidth, setTrackWidth] = useState(0);
   const [confirming, setConfirming] = useState(false);
 
+  // PanResponder vzniká jen jednou — aktuální props a stav musí číst přes ref,
+  // jinak by po změně stavu zakázky posílal pořád první akci.
+  const onConfirmRef = useRef(onConfirm);
+  onConfirmRef.current = onConfirm;
+  const disabledRef = useRef(Boolean(disabled));
+  disabledRef.current = Boolean(disabled);
+  const confirmingRef = useRef(false);
+
   maxOffset.current = Math.max(trackWidth - THUMB_SIZE - TRACK_PADDING * 2, 1);
-  translate.addListener?.(() => {});
 
   const springTo = (value: number, done?: () => void) => {
     Animated.spring(translate, { toValue: value, useNativeDriver: true, bounciness: 6 }).start(done);
@@ -39,8 +46,8 @@ export function SlideToConfirm({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !disabled && !confirming,
-      onMoveShouldSetPanResponder: (_evt, gesture) => Math.abs(gesture.dx) > 4 && !disabled && !confirming,
+      onStartShouldSetPanResponder: () => !disabledRef.current && !confirmingRef.current,
+      onMoveShouldSetPanResponder: (_evt, gesture) => Math.abs(gesture.dx) > 4 && !disabledRef.current && !confirmingRef.current,
       onPanResponderMove: (_evt, gesture) => {
         position.current = Math.max(0, Math.min(gesture.dx, maxOffset.current));
         translate.setValue(position.current);
@@ -48,13 +55,17 @@ export function SlideToConfirm({
       onPanResponderRelease: () => {
         if (position.current >= maxOffset.current * CONFIRM_THRESHOLD) {
           Vibration.vibrate(40);
+          confirmingRef.current = true;
           setConfirming(true);
           springTo(maxOffset.current, async () => {
             try {
-              await onConfirm();
+              await onConfirmRef.current();
             } finally {
               position.current = 0;
-              springTo(0, () => setConfirming(false));
+              springTo(0, () => {
+                confirmingRef.current = false;
+                setConfirming(false);
+              });
             }
           });
         } else {
