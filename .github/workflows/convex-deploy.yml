@@ -1,0 +1,40 @@
+name: Convex Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "convex/**"
+      - ".github/workflows/convex-deploy.yml"
+
+jobs:
+  deploy:
+    name: Deploy Convex backend
+    runs-on: ubuntu-latest
+    env:
+      CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy to production
+        run: |
+          if [ -z "$CONVEX_DEPLOY_KEY" ]; then
+            echo "::warning::Secret CONVEX_DEPLOY_KEY není nastaven — nasazení přeskočeno."
+            echo "Vytvořte produkční deploy key na dashboard.convex.dev (Settings → Deploy keys)"
+            echo "a uložte ho jako GitHub secret CONVEX_DEPLOY_KEY."
+            exit 0
+          fi
+          npx convex deploy -y
