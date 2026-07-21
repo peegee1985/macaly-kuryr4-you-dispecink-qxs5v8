@@ -3,6 +3,7 @@ import { mutation, query, action, internalMutation, internalQuery, internalActio
 import { getAuthUserId } from "@convex-dev/auth/server"
 import type { Id, Doc } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
+import { notifyDispatchers } from "./presence"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -133,6 +134,14 @@ export const createRideFromApi = internalMutation({
       isPaid: true, // corporate = invoice billing
       attachmentIds: [],
       podPhotoIds: [],
+    })
+
+    // Dispečink: nová zakázka přes API
+    await notifyDispatchers(ctx, {
+      title: "Nová zakázka",
+      message: `${rideNumber} (API): ${args.pickupAddress} → ${args.deliveryAddress}`,
+      type: "ride_status",
+      rideId,
     })
 
     console.log("[apiKeys] created ride from API:", rideNumber, "for customer:", args.customerId)

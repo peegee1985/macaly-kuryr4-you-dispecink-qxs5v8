@@ -208,6 +208,14 @@ export default defineSchema({
     .index("by_date", ["date"])
     .index("by_driver_date", ["driverId", "date"]),
 
+  driverPresence: defineTable({
+    driverId: v.id("users"),
+    isOnline: v.boolean(),
+    lastSeenAt: v.number(),
+  })
+    .index("by_driver", ["driverId"])
+    .index("by_online", ["isOnline"]),
+
   gpsLocations: defineTable({
     driverId: v.id("users"),
     lat: v.number(),

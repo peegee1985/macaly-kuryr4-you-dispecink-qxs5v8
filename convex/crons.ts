@@ -27,4 +27,11 @@ crons.daily(
   internal.crons.purgeOldChatMessages,
 )
 
+// Řidiče bez heartbeatu označit offline a upozornit dispečink
+crons.interval(
+  "sweep-stale-driver-presence",
+  { minutes: 1 },
+  internal.presence.sweepStalePresence,
+)
+
 export default crons

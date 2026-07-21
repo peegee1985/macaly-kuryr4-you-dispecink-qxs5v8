@@ -56,6 +56,8 @@ export type DriverPresence = {
   driverId: string;
   isOnline: boolean;
   lastSeenAt: number;
+  driverName?: string;
+  vehiclePlate?: string;
 };
 
 export type Ride = {

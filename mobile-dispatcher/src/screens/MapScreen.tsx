@@ -20,6 +20,8 @@ import { colors, radius, spacing } from "../theme";
 import type { DriverLocation, Ride } from "../types";
 
 const GPS_FRESH_MS = 120_000;
+// Přihlášený řidič bez aktivní GPS (online)
+const ONLINE_COLOR = "#FACC15";
 const CLOSED_RIDE_STATUSES = new Set(["delivered", "cancelled", "failed"]);
 
 type MapDriver = {
@@ -136,6 +138,16 @@ export function MapScreen({
         ),
     [rides],
   );
+  const onlineWithoutLocation = useMemo(() => {
+    const located = new Set(knownLocations.map((item) => item.driverId));
+    return presence.filter(
+      (item) => item.isOnline && !located.has(item.driverId),
+    );
+  }, [knownLocations, presence]);
+  const onlineCount = useMemo(
+    () => presence.filter((item) => item.isOnline).length,
+    [presence],
+  );
   const mapDrivers = useMemo<MapDriver[]>(() => {
     return knownLocations.map((item) => {
       const activeRide = activeByDriver.get(item.driverId);
@@ -235,7 +247,7 @@ export function MapScreen({
     <Screen scroll={false} contentStyle={styles.screen}>
       <PageHeader
         title="Živá mapa"
-        subtitle={`${mapDrivers.length} posledních poloh · ${openRides.length} plánovaných a aktivních zakázek`}
+        subtitle={`${onlineCount} řidičů online · ${mapDrivers.length} posledních poloh · ${openRides.length} zakázek`}
         action={
           hasMapItems ? (
             <Pressable
@@ -297,9 +309,11 @@ export function MapScreen({
           <View
             style={[styles.legendDot, { backgroundColor: colors.success }]}
           />
-          <Text style={styles.legendText}>GPS online</Text>
+          <Text style={styles.legendText}>Online · GPS</Text>
+          <View style={[styles.legendDot, { backgroundColor: ONLINE_COLOR }]} />
+          <Text style={styles.legendText}>Online</Text>
           <View style={[styles.legendDot, { backgroundColor: colors.info }]} />
-          <Text style={styles.legendText}>Poslední poloha</Text>
+          <Text style={styles.legendText}>Offline</Text>
           <View
             style={[styles.legendDot, { backgroundColor: colors.primary }]}
           />
@@ -310,13 +324,36 @@ export function MapScreen({
           <Text style={styles.legendText}>Doručení</Text>
         </View>
       </View>
-      {knownLocations.length > 0 ? (
+      {knownLocations.length > 0 || onlineWithoutLocation.length > 0 ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.driverList}
           style={styles.driverScroll}
         >
+          {onlineWithoutLocation.map((item) => (
+            <View key={item.driverId} style={styles.driverCard}>
+              <View style={styles.driverTop}>
+                <View
+                  style={[styles.onlineDot, { backgroundColor: ONLINE_COLOR }]}
+                />
+                <Text style={styles.driverName} numberOfLines={1}>
+                  {item.driverName ?? "Neznámý řidič"}
+                </Text>
+              </View>
+              <Text style={styles.vehicle}>
+                {item.vehiclePlate ?? "Vozidlo bez SPZ"} · Online · bez GPS
+              </Text>
+              <Text style={styles.noRide}>
+                Přihlášen, zatím neposlal žádnou polohu.
+              </Text>
+              <View style={styles.driverBottom}>
+                <Text style={styles.updated}>
+                  {formatDateTime(item.lastSeenAt)}
+                </Text>
+              </View>
+            </View>
+          ))}
           {knownLocations.map((item) => {
             const activeRide = activeByDriver.get(item.driverId);
             const selected = selectedDriver === item.driverId;
@@ -341,7 +378,9 @@ export function MapScreen({
                       {
                         backgroundColor: gpsActive
                           ? colors.success
-                          : colors.info,
+                          : loggedIn
+                            ? ONLINE_COLOR
+                            : colors.info,
                       },
                     ]}
                   />
@@ -352,10 +391,10 @@ export function MapScreen({
                 <Text style={styles.vehicle}>
                   {item.vehiclePlate ?? "Vozidlo bez SPZ"} ·{" "}
                   {gpsActive
-                    ? "GPS zapnuto"
+                    ? "Online · GPS zapnuto"
                     : loggedIn
-                      ? "Přihlášen"
-                      : "Poslední známá poloha"}
+                      ? "Online · bez GPS"
+                      : "Offline · poslední známá poloha"}
                 </Text>
                 <View style={styles.speedRow}>
                   <Ionicons
@@ -429,7 +468,7 @@ const leafletHtml = `<!doctype html>
     .leaflet-control-attribution a{color:#F59E0B!important}
     .leaflet-control-zoom a{background:#171A24!important;color:#EDF0F7!important;border-color:#2A2F3D!important}
     .driver-marker,.ride-marker{width:30px;height:30px;border-radius:16px;border:3px solid #0F111A;box-shadow:0 3px 12px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#111318;font-size:15px}
-    .driver-marker{background:#38BDF8}.driver-marker.gps{background:#22C55E}.ride-marker.pickup{background:#F59E0B}.ride-marker.delivery{background:#22C55E}
+    .driver-marker{background:#38BDF8}.driver-marker.online{background:#FACC15}.driver-marker.gps{background:#22C55E}.ride-marker.pickup{background:#F59E0B}.ride-marker.delivery{background:#22C55E}
     .popup-name{font-weight:800;font-size:13px}.popup-meta{color:#555;font-size:11px;margin-top:3px}.popup-ride{color:#B45309;font-weight:700;font-size:11px;margin-top:5px}.popup-speed{color:#0369A1;font-weight:800;font-size:12px;margin-top:5px}
   </style>
 </head>
@@ -443,9 +482,9 @@ const leafletHtml = `<!doctype html>
       L.control.zoom({position:'topright'}).addTo(map);
       var driverMarkers={};var rideMarkers={};var drivers=[];var ridePoints=[];var fitted=false;
       function esc(value){return String(value===undefined||value===null?'':value).replace(/[&<>"']/g,function(char){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]})}
-      function driverIcon(item){return L.divIcon({className:'',html:'<div class="driver-marker '+(item.gpsActive?'gps':'')+'">&#128663;</div>',iconSize:[36,36],iconAnchor:[18,18],popupAnchor:[0,-19]})}
+      function driverIcon(item){return L.divIcon({className:'',html:'<div class="driver-marker '+(item.gpsActive?'gps':item.loggedIn?'online':'')+'">&#128663;</div>',iconSize:[36,36],iconAnchor:[18,18],popupAnchor:[0,-19]})}
       function rideIcon(item){return L.divIcon({className:'',html:'<div class="ride-marker '+item.kind+'">'+(item.kind==='pickup'?'&#128230;':'&#9873;')+'</div>',iconSize:[36,36],iconAnchor:[18,18],popupAnchor:[0,-19]})}
-      function driverPopup(item){var speed=item.speedKmh===undefined?'Rychlost není dostupná':(item.gpsActive?'Aktuálně ':'Naposledy ')+esc(item.speedKmh)+' km/h';var state=item.gpsActive?'GPS online':item.loggedIn?'Přihlášen · poslední známá poloha':'Offline · poslední známá poloha';return '<div class="popup-name">'+esc(item.name)+'</div><div class="popup-meta">'+esc(item.plate)+' · '+state+'</div><div class="popup-speed">'+speed+'</div><div class="popup-meta">Aktualizováno '+esc(item.updatedLabel)+'</div>'+(item.ride?'<div class="popup-ride">'+esc(item.ride)+'</div>':'<div class="popup-meta">Bez aktivní zakázky</div>')}
+      function driverPopup(item){var speed=item.speedKmh===undefined?'Rychlost není dostupná':(item.gpsActive?'Aktuálně ':'Naposledy ')+esc(item.speedKmh)+' km/h';var state=item.gpsActive?'Online · GPS':item.loggedIn?'Online bez GPS · poslední známá poloha':'Offline · poslední známá poloha';return '<div class="popup-name">'+esc(item.name)+'</div><div class="popup-meta">'+esc(item.plate)+' · '+state+'</div><div class="popup-speed">'+speed+'</div><div class="popup-meta">Aktualizováno '+esc(item.updatedLabel)+'</div>'+(item.ride?'<div class="popup-ride">'+esc(item.ride)+'</div>':'<div class="popup-meta">Bez aktivní zakázky</div>')}
       function ridePopup(item){return '<div class="popup-name">#'+esc(item.number)+' · '+esc(item.label)+'</div><div class="popup-meta">'+esc(item.status)+' · '+esc(item.scheduledLabel)+'</div><div class="popup-ride">'+esc(item.address)+'</div>'}
       window.updateMapData=function(nextDrivers,nextRidePoints){
         drivers=nextDrivers||[];ridePoints=nextRidePoints||[];var seenDrivers={};var seenRides={};

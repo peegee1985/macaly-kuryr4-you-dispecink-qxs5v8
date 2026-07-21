@@ -4,6 +4,7 @@ import type { MutationCtx } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import type { Doc, Id } from "./_generated/dataModel"
 import { api, internal } from "./_generated/api"
+import { notifyDispatchers } from "./presence"
 
 // ─── Rating ────────────────────────────────────────────────────────────────
 
@@ -349,6 +350,14 @@ export const createRide = mutation({
     })
 
     console.log(`Ride created: ${rideId}`)
+
+    const newRide = await ctx.db.get(rideId)
+    await notifyDispatchers(ctx, {
+      title: "Nová zakázka",
+      message: `${newRide?.rideNumber ?? ""} · ${user.name ?? user.email}: ${args.pickupAddress} → ${args.deliveryAddress}`,
+      type: "ride_status",
+      rideId,
+    })
 
     // Naceněná objednávka → rovnou vygenerovat platební odkaz,
     // pokud zákazník není firemní nebo má nastavenou preferenci "card"
@@ -767,6 +776,14 @@ export async function updateRideStatusCore(
       rideId: ride._id,
     })
 
+    // Dispečink: přehled o změnách stavu (kromě původce akce)
+    await notifyDispatchers(ctx, {
+      title: statusLabels[args.status] ?? "Stav zakázky změněn",
+      message: `Zakázka ${ride.rideNumber} · ${user.name ?? user.email}: ${statusLabels[args.status] ?? args.status}`,
+      type: "ride_status",
+      rideId: ride._id,
+    }, user._id)
+
     // Push: notify customer about status change
     const pushTitles: Record<string, string> = {
       pickup: "📦 Zásilka vyzvedávána",
@@ -973,6 +990,14 @@ export const submitPOD = mutation({
       rideId: ride._id,
     })
 
+    // Dispečink: potvrzené doručení s POD
+    await notifyDispatchers(ctx, {
+      title: "Zásilka doručena",
+      message: `Zakázka ${ride.rideNumber} doručena (${user.name ?? user.email}), příjemce: ${args.recipientName.trim()}.`,
+      type: "ride_status",
+      rideId: ride._id,
+    }, user._id)
+
     // Send delivery confirmation email with rating link
     const customer = await ctx.db.get(ride.customerId)
     if (customer?.email && ride.ratingToken) {
@@ -1063,6 +1088,14 @@ export const submitFailedDelivery = mutation({
       type: "ride_status",
       rideId: ride._id,
     })
+
+    // Dispečink: neúspěšné doručení vyžaduje pozornost
+    await notifyDispatchers(ctx, {
+      title: "Zásilka nedoručena",
+      message: `Zakázka ${ride.rideNumber} (${user.name ?? user.email}) nedoručena. Důvod: ${args.failedReason}`,
+      type: "ride_status",
+      rideId: ride._id,
+    }, user._id)
 
     // Push notification to customer
     await ctx.scheduler.runAfter(0, internal.pushNotificationsActions.sendPushToUser, {
@@ -1213,6 +1246,14 @@ export const createRideAsDispatcher = mutation({
     })
 
     const rideDoc = await ctx.db.get(rideId)
+
+    // Dispečink: informovat ostatní dispečery o ručně založené zakázce
+    await notifyDispatchers(ctx, {
+      title: "Nová zakázka",
+      message: `${rideDoc?.rideNumber ?? ""} (založil dispečer ${user.name ?? user.email}): ${args.pickupAddress} → ${args.deliveryAddress}`,
+      type: "ride_status",
+      rideId,
+    }, user._id)
 
     // Notify customer (in-app)
     await ctx.db.insert("notifications", {
@@ -1617,6 +1658,14 @@ export async function selfAssignRideCore(ctx: MutationCtx, user: Doc<"users">, r
       }
     }
 
+    // Dispečink: řidič si vzal volnou zakázku
+    await notifyDispatchers(ctx, {
+      title: "Řidič přijal zakázku",
+      message: `${user.name ?? user.email} přijal zakázku ${ride.rideNumber}: ${ride.pickupAddress} → ${ride.deliveryAddress}`,
+      type: "ride_assigned",
+      rideId: ride._id,
+    })
+
     console.log(`Driver ${user.name} self-assigned ride ${ride.rideNumber}`)
 }
 
@@ -1653,6 +1702,15 @@ export async function rejectRideCore(ctx: MutationCtx, user: Doc<"users">, rideI
       rideId,
       rejectedAt: Date.now(),
     })
+
+    // Dispečink: řidič odmítl volnou zakázku
+    await notifyDispatchers(ctx, {
+      title: "Řidič odmítl zakázku",
+      message: `${user.name ?? user.email} odmítl zakázku ${ride.rideNumber}: ${ride.pickupAddress} → ${ride.deliveryAddress}`,
+      type: "system",
+      rideId: ride._id,
+    })
+
     console.log(`Driver ${user.name} rejected ride ${ride.rideNumber}`)
 }
 

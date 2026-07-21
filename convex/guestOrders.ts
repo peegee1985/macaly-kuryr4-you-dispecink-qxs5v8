@@ -1,5 +1,6 @@
 import { v } from "convex/values"
 import { internalMutation, internalQuery } from "./_generated/server"
+import { notifyDispatchers } from "./presence"
 
 function generateToken(): string {
   return crypto.randomUUID().replace(/-/g, "")
@@ -146,6 +147,14 @@ export const fulfillGuestOrder = internalMutation({
     })
 
     await ctx.db.patch(args.pendingOrderId, { status: "paid" })
+
+    // Dispečink: nová zaplacená objednávka od hosta
+    await notifyDispatchers(ctx, {
+      title: "Nová zakázka",
+      message: `${args.rideNumber} (host, zaplaceno): ${order.pickupAddress} → ${order.deliveryAddress}`,
+      type: "ride_status",
+      rideId,
+    })
 
     console.log(`[guestOrders] Fulfilled ride ${rideId} (${args.rideNumber})`)
     return { rideId, trackingToken }
