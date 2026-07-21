@@ -97,6 +97,20 @@ jobs:
           test -n "$DRIVER_URL" && test "$DRIVER_URL" != "null"
           curl --fail --location "$DRIVER_URL" --output kuryr4you-ridic.aab
 
+      - name: Nahrát řidičské AAB do Google Play (EAS Submit)
+        if: steps.changes.outputs.driver == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          if [ -z "$GOOGLE_SERVICE_ACCOUNT_KEY" ]; then
+            echo "::warning::Secret GOOGLE_SERVICE_ACCOUNT_KEY není nastaven — nahrání do Google Play přeskočeno."
+            echo "Vytvořte service account v Google Cloud, pozvěte ho do Play Console a JSON klíč uložte jako secret GOOGLE_SERVICE_ACCOUNT_KEY."
+            exit 0
+          fi
+          printf '%s' "$GOOGLE_SERVICE_ACCOUNT_KEY" > mobile/google-service-account.json
+          trap 'rm -f mobile/google-service-account.json' EXIT
+          (cd mobile && npx eas-cli@21.0.2 submit --platform android --profile production --path ../kuryr4you-ridic.aab --non-interactive)
+
       - name: Sestavit instalační APK dispečinku
         if: steps.changes.outputs.dispatcher == 'true'
         run: |
