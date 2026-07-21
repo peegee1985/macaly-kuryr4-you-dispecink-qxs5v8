@@ -10,6 +10,7 @@ import { LevelUpModal } from "./src/components/LevelUpModal";
 import { BottomTabs, LoadingView } from "./src/components/ui";
 import { useGpsTracking } from "./src/hooks/useGpsTracking";
 import { useDriverStatusNotification } from "./src/hooks/useDriverStatusNotification";
+import { usePresenceHeartbeat } from "./src/hooks/usePresenceHeartbeat";
 import { api } from "./src/lib/api";
 import { secureAuthStorage } from "./src/lib/storage";
 import { getStatusNotificationsEnabled } from "./src/lib/statusNotifications";
@@ -81,6 +82,8 @@ function DriverApp({ user, onSignOut }: { user: DriverUser; onSignOut: () => voi
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [statusNotificationsEnabled, setStatusNotificationsEnabledState] = useState(false);
   const gps = useGpsTracking();
+  const goOffline = useMutation(api.presence.goOffline);
+  usePresenceHeartbeat();
   const rides = useQuery(api.rides.getDriverRides, {}) as Ride[] | undefined;
   const unreadChat = useQuery(api.chat.getUnreadChatCount, {}) as number | undefined;
   const initializeGamification = useMutation(api.gamification.initializeMyGamification);
@@ -119,6 +122,8 @@ function DriverApp({ user, onSignOut }: { user: DriverUser; onSignOut: () => voi
 
   const logout = async () => {
     if (gps.tracking) await gps.stop();
+    // Oznámit dispečinku odhlášení dřív, než signOut zruší přihlášení
+    await goOffline({}).catch(() => {});
     onSignOut();
   };
 

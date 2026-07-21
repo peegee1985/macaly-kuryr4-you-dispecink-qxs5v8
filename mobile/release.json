@@ -1,17 +1,13 @@
 {
-  "version": "0.7.0",
-  "versionCode": 8,
+  "version": "0.8.0",
+  "versionCode": 9,
   "minimumVersionCode": 5,
   "downloadUrl": "https://github.com/peegee1985/macaly-kuryr4-you-dispecink-qxs5v8/releases/download/driver-latest/kuryr4you-ridic.apk",
   "releaseNotes": [
+    "Aplikace hlásí dispečinku stav online i bez zapnuté GPS",
+    "Dispečink dostává oznámení o přihlášení a odhlášení řidiče",
     "Připravené originální grafiky všech gamifikačních odznaků přímo v nativní aplikaci",
     "Detail odznaku s úrovní, popisem a postupem k další úrovni",
-    "Originální grafika XP, série a nové úrovně",
-    "Opravená rychlost na dispečerské mapě — v pozadí se nyní správně počítá i za jízdy",
-    "Opravené nahrávání fotografií a podpisu POD",
-    "Nouzové dokončení zakázky bez POD po potvrzení řidičem",
-    "Vícezastávkové zakázky a navigace celé trasy",
-    "Zakázky seřazené podle fáze a nejbližší realizace",
-    "Nová ikona aplikace K4Y"
+    "Vícezastávkové zakázky a navigace celé trasy"
   ]
 }

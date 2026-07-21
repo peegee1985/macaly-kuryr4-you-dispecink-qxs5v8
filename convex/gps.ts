@@ -2,6 +2,7 @@ import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { getAuthUserId } from "@convex-dev/auth/server"
 import type { Id } from "./_generated/dataModel"
+import { touchDriverPresence } from "./presence"
 
 // Driver: update GPS location
 export const updateLocation = mutation({
@@ -48,6 +49,8 @@ export const updateLocation = mutation({
         updatedAt: Date.now(),
       })
     }
+    // GPS aktualizace drží řidiče online i při aplikaci na pozadí
+    await touchDriverPresence(ctx, user)
     return null
   },
 })
